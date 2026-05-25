@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CameraLK – Sri Lanka's #1 Camera Store</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    /* ── Brand ribbon ── */
+    .brand-logo-item .brand-icon{font-size:14px;font-weight:900;letter-spacing:-.5px;color:#222;white-space:nowrap;display:flex;align-items:center;justify-content:center;width:64px;height:40px}
+    .brand-logo-item .brand-img{width:64px;height:40px;object-fit:contain}
+
+    /* ── Hot deal card extras ── */
+    .deal-timer-row{background:#fff8f0;border:1px solid #fde8cc;border-radius:6px;padding:6px 10px;margin-bottom:8px;display:flex;align-items:center;gap:6px;font-size:12px;color:#555;flex-wrap:wrap}
+    .deal-timer-row i{color:#e87722}
+    .cd-block{display:inline-flex;flex-direction:column;align-items:center;min-width:30px}
+    .cd-num{font-size:15px;font-weight:800;color:#e87722;line-height:1}
+    .cd-label{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.3px}
+    .cd-sep{font-weight:800;color:#e87722;font-size:14px;margin:0 1px;align-self:flex-start;margin-top:2px}
+
+    /* ── Featured banner ── */
+    .feat-banner{background:linear-gradient(135deg,#0a0a0a,#1a0000);border-radius:12px;padding:48px 40px;display:flex;align-items:center;gap:40px;overflow:hidden;position:relative;margin-bottom:0}
+    .feat-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:280px;height:280px;border-radius:50%;background:rgba(217,27,35,.1)}
+    .feat-text{flex:1;position:relative;z-index:1}
+    .feat-text .eyebrow{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+    .feat-text h2{font-size:34px;font-weight:900;color:#fff;line-height:1.15;margin-bottom:10px}
+    .feat-text p{font-size:14px;color:#aaa;margin-bottom:22px}
+    .feat-img{width:260px;flex-shrink:0}
+    .feat-img img{width:100%;object-fit:contain;filter:drop-shadow(0 8px 28px rgba(217,27,35,.3))}
+    @media(max-width:768px){.feat-banner{flex-direction:column;padding:28px 20px;text-align:center}.feat-img{width:160px}.feat-text h2{font-size:24px}}
+
+    /* skeleton */
+    .skel{background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200%;animation:shimmer 1.4s infinite;border-radius:8px}
+    @keyframes shimmer{0%{background-position:200%}100%{background-position:-200%}}
+
+    /* Hero slide image */
+    .slide-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35}
+  </style>
+</head>
+<body>
+
+<div id="header-mount"></div>
+
+<!-- ══ HERO SLIDER ══ -->
+<section class="hero-slider" id="hero-slider" aria-label="Hero">
+  <button class="slider-arrow prev"><i class="fas fa-chevron-left"></i></button>
+  <button class="slider-arrow next"><i class="fas fa-chevron-right"></i></button>
+  <div class="slider-dots" id="slider-dots"></div>
+</section>
+
+<!-- ══ BRAND RIBBON ══ -->
+<section style="background:#fff;border-top:1px solid #f0f0f0;border-bottom:1px solid #f0f0f0;padding:18px 0;overflow:hidden">
+  <div class="brand-track" id="brand-track">
+    <!-- Dynamic from Store.settings.brands -->
+  </div>
+</section>
+
+<!-- ══ HOT DEALS ══ -->
+<section class="section-pad" style="background:var(--grey)">
+  <div class="container">
+    <div class="section-title">
+      <span class="icon">🔥</span> Hot Deals
+      <span class="bar"></span>
+      <a href="category.html" style="font-size:13px;font-weight:600;color:var(--red);white-space:nowrap">View All →</a>
+    </div>
+    <div class="products-grid" id="hot-deals-grid">
+      <div class="skel" style="height:360px"></div>
+      <div class="skel" style="height:360px"></div>
+      <div class="skel" style="height:360px"></div>
+      <div class="skel" style="height:360px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FEATURED BANNER ══ -->
+<section class="section-pad">
+  <div class="container">
+    <div class="feat-banner">
+      <div class="feat-text">
+        <div class="eyebrow">🎥 Featured Collection</div>
+        <h2>Professional Cinema<br>Starts Here</h2>
+        <p>Discover our curated selection trusted by Sri Lanka's top filmmakers.</p>
+        <a href="category.html?cat=Pro Video" class="btn btn-red">Shop Cinema Gear &nbsp;<i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="feat-img">
+        <img src="https://placehold.co/260x200/1a0000/D91B23?text=CINEMA" alt="Cinema Gear">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ NEW ARRIVALS ══ -->
+<section class="section-pad" style="background:var(--grey)">
+  <div class="container">
+    <div class="section-title">
+      <span class="icon">✨</span> New Arrivals
+      <span class="bar"></span>
+      <a href="category.html" style="font-size:13px;font-weight:600;color:var(--red);white-space:nowrap">View All →</a>
+    </div>
+    <div class="products-grid" id="new-arrivals-grid">
+      <div class="skel" style="height:320px"></div>
+      <div class="skel" style="height:320px"></div>
+      <div class="skel" style="height:320px"></div>
+      <div class="skel" style="height:320px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FEATURED PRODUCTS ══ -->
+<section class="section-pad">
+  <div class="container">
+    <div class="section-title">
+      <span class="icon">⭐</span> Featured Products
+      <span class="bar"></span>
+      <a href="category.html" style="font-size:13px;font-weight:600;color:var(--red);white-space:nowrap">View All →</a>
+    </div>
+    <div class="products-grid" id="featured-grid">
+      <div class="skel" style="height:320px"></div>
+      <div class="skel" style="height:320px"></div>
+      <div class="skel" style="height:320px"></div>
+      <div class="skel" style="height:320px"></div>
+    </div>
+  </div>
+</section>
+
+<div id="footer-mount"></div>
+<div id="toast"><span class="toast-icon">✓</span><span class="toast-msg"></span></div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/store.js"></script>
+<script src="js/components.js"></script>
+<script>
+// ── Hero Slider Builder ────────────────────────────────────
+function buildHeroSlider(slides) {
+  const slider = document.getElementById('hero-slider');
+  const dotsWrap = document.getElementById('slider-dots');
+  const defBgs = [
+    'linear-gradient(135deg,#0d0d0d,#1a0a00)',
+    'linear-gradient(135deg,#0a0a1a,#0a1a2a)',
+    'linear-gradient(135deg,#0a1a0a,#0d0a1a)',
+    'linear-gradient(135deg,#1a0a0a,#0a0a0a)',
+    'linear-gradient(135deg,#0d1a0d,#1a0d0a)'
+  ];
+
+  slides.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'slide' + (i === 0 ? ' active' : '');
+
+    // Background: image if provided, fallback to gradient
+    const bgStyle = s.bg || defBgs[i % defBgs.length];
+    const imgHtml = (s.image && s.image.trim())
+      ? `<img class="slide-bg-img" src="${s.image}" alt="${s.title||''}" onerror="this.style.display='none'">`
+      : '';
+
+    div.innerHTML = `
+      <div class="slide-bg" style="background:${bgStyle}"></div>
+      ${imgHtml}
+      <div class="slide-overlay"></div>
+      <div class="container slide-content">
+        <div class="slide-badge">${s.badge || ''}</div>
+        <h1 class="slide-title">${(s.title || '').replace(/\n/g, '<br>')}</h1>
+        <p class="slide-subtitle">${s.subtitle || ''}</p>
+        <div class="slide-price">${s.price || ''}</div>
+        <a href="product.html${s.productId ? '?id=' + s.productId : ''}" class="btn btn-red btn-lg">
+          Buy Now &nbsp;<i class="fas fa-arrow-right"></i>
+        </a>
+      </div>`;
+
+    slider.insertBefore(div, slider.querySelector('.prev'));
+
+    const dot = document.createElement('div');
+    dot.className = 'slider-dot' + (i === 0 ? ' active' : '');
+    dotsWrap.appendChild(dot);
+  });
+
+  initHeroSlider();
+}
+
+// ── Brand Ribbon Builder ───────────────────────────────────
+function buildBrandRibbon(brands) {
+  const track = document.getElementById('brand-track');
+  if (!track) return;
+
+  const defaultBrands = [
+    'Sony','DJI','GoPro','Godox','Rode','SanDisk',
+    'Canon','Nikon','Fujifilm','Manfrotto','Tamron','Sigma','Zhiyun','Lexar'
+  ];
+
+  const items = (brands && brands.length) ? brands : defaultBrands.map(n => ({ name: n, image: '' }));
+
+  track.innerHTML = items.map(b => {
+    const inner = (b.image && b.image.trim())
+      ? `<img class="brand-img" src="${b.image}" alt="${b.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+         <div class="brand-icon" style="display:none">${b.name}</div>`
+      : `<div class="brand-icon">${b.name}</div>`;
+    return `
+      <div class="brand-logo-item" onclick="window.location.href='category.html?brand=${encodeURIComponent(b.name)}'">
+        ${inner}
+        <div class="brand-name">${b.name}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── Deal Card Builder ──────────────────────────────────────
+function buildDealCard(prod) {
+  const imgs = (prod.images || []).filter(i => i);
+  const img = imgs[0] || `https://placehold.co/300x300/f5f5f5/333?text=${encodeURIComponent(prod.brand || '')}`;
+  const old = prod.oldPrice
+    ? `<span class="card-price-old">Rs. ${prod.oldPrice.toLocaleString()}.00</span><span class="card-save">Save Rs. ${(prod.oldPrice - prod.price).toLocaleString()}</span>`
+    : '';
+  const endMs = prod.dealEndDays ? Date.now() + prod.dealEndDays * 86400000 : 0;
+  const timerHtml = endMs ? `
+    <div class="deal-timer-row" data-end="${endMs}">
+      <i class="fas fa-clock"></i> Deal ends in:
+      <div class="cd-block"><span class="cd-num cd-days">--</span><span class="cd-label">Days</span></div>
+      <span class="cd-sep">:</span>
+      <div class="cd-block"><span class="cd-num cd-hrs">--</span><span class="cd-label">Hrs</span></div>
+      <span class="cd-sep">:</span>
+      <div class="cd-block"><span class="cd-num cd-mins">--</span><span class="cd-label">Min</span></div>
+      <span class="cd-sep">:</span>
+      <div class="cd-block"><span class="cd-num cd-secs">--</span><span class="cd-label">Sec</span></div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${prod.dealProgress || 30}%"></div></div>` : '';
+
+  return `
+    <article class="product-card" data-product
+      data-id="${prod.id}" data-name="${prod.name}" data-price="${prod.price}" data-img="${img}"
+      style="cursor:pointer" onclick="window.location.href='product.html?id=${prod.id}'">
+      <div class="card-img">
+        <span class="card-badge badge badge-red">DEAL</span>
+        <img src="${img}" alt="${prod.name}" loading="lazy" onerror="this.src='https://placehold.co/300x300/f5f5f5/999?text=No+Image'">
+      </div>
+      <div class="card-body">
+        <div class="card-title">${prod.name}</div>
+        <div class="card-price-current">Rs. ${prod.price.toLocaleString()}.00</div>
+        <div class="card-price-row">${old}</div>
+        ${timerHtml}
+        <div class="stars">${'★'.repeat(Math.round(prod.rating || 5))} <span class="star-count">(${prod.reviewCount || 0})</span></div>
+      </div>
+      <div class="card-footer">
+        <button class="card-add-btn add-to-cart" onclick="event.stopPropagation();addToCartFromCard(this)">
+          <i class="fas fa-cart-plus"></i> Add to Cart
+        </button>
+      </div>
+    </article>`;
+}
+
+// ── BOOT ──────────────────────────────────────────────────
+(async () => {
+  await Store.init();
+  Store.applySettings();
+  SearchEngine.build();
+
+  const all = Store.getProductsArray();
+  const s   = Store.settings;
+
+  // Hero Slides
+  const slides = (s && s.heroSlides && s.heroSlides.length) ? s.heroSlides :
+    [{ badge:'🔥 Hot Deal', title:'Sony Alpha\nA7 IV', subtitle:'Full-Frame Mirrorless — 33MP', price:'Rs. 489,000', bg:'linear-gradient(135deg,#0d0d0d,#1a0a00)', image:'', productId:'prod-001' }];
+  buildHeroSlider(slides);
+
+  // Brand Ribbon
+  buildBrandRibbon(s && s.brands);
+
+  // Hot Deals
+  const deals = all.filter(p => p.hotDeal).slice(0, 4);
+  document.getElementById('hot-deals-grid').innerHTML = deals.length
+    ? deals.map(buildDealCard).join('')
+    : '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px">No hot deals at the moment.</p>';
+
+  // New Arrivals
+  const arrivals = all.filter(p => p.newArrival).slice(0, 4);
+  document.getElementById('new-arrivals-grid').innerHTML = arrivals.length
+    ? arrivals.map(renderProductCard).join('')
+    : '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px">No new arrivals.</p>';
+
+  // Featured
+  const featured = all.filter(p => p.featured).slice(0, 4);
+  document.getElementById('featured-grid').innerHTML = featured.length
+    ? featured.map(renderProductCard).join('')
+    : '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px">No featured products.</p>';
+
+  initCountdownTimers();
+})();
+</script>
+</body>
+</html>

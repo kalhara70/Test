@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product – CameraLK</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    .review-card{border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+    .review-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .review-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--red),#7a0e12);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0}
+    .review-name{font-weight:700;font-size:14px}
+    .review-date{font-size:12px;color:var(--muted)}
+    .review-body{font-size:14px;color:#555;line-height:1.65}
+    .action-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+    .action-pill{display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;color:var(--muted);transition:var(--transition)}
+    .action-pill:hover{border-color:var(--red);color:var(--red)}
+    .related-scroll{display:flex;gap:18px;overflow-x:auto;padding-bottom:12px;scrollbar-width:thin}
+    .related-scroll .product-card{min-width:220px;max-width:220px}
+    #page-loader{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+    .loader-spinner{width:44px;height:44px;border:4px solid #f0f0f0;border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<!-- Page loader -->
+<div id="page-loader">
+  <div class="loader-spinner"></div>
+  <div style="font-size:14px;color:#999;font-family:'Poppins',sans-serif">Loading product...</div>
+</div>
+
+<div id="header-mount"></div>
+
+<!-- Breadcrumb -->
+<div style="background:var(--grey);padding:12px 0;border-bottom:1px solid var(--border)">
+  <div class="container">
+    <nav class="breadcrumb">
+      <a href="index.html">Home</a><span class="sep">›</span>
+      <a href="category.html" id="bc-category">Photography</a><span class="sep">›</span>
+      <span class="current" id="bc-name">Product</span>
+    </nav>
+  </div>
+</div>
+
+<section class="product-detail-section">
+  <div class="container">
+    <div class="detail-layout">
+
+      <!-- LEFT: Gallery -->
+      <div>
+        <div class="main-image" id="main-img-wrap">
+          <img src="https://placehold.co/500x500/f5f5f5/ccc?text=Loading..." alt="Product" id="main-product-img">
+          <span class="zoom-hint"><i class="fas fa-search-plus"></i> Hover to zoom</span>
+        </div>
+        <div class="thumb-grid" id="thumb-grid"></div>
+      </div>
+
+      <!-- RIGHT: Info -->
+      <div id="product-info">
+        <div class="product-brand-row">
+          <span class="product-brand" id="pd-brand">—</span>
+          <span class="product-sku" id="pd-sku">SKU: —</span>
+        </div>
+        <h1 class="product-title-main" id="pd-name">Loading...</h1>
+        <div class="rating-row">
+          <div class="stars" id="pd-stars">★★★★★</div>
+          <span class="star-count" id="pd-rating-count"></span>
+          <span style="color:var(--border)">|</span>
+          <a href="#tab-reviews" style="font-size:13px;color:var(--red);font-weight:600" onclick="document.querySelectorAll('.tab-btn')[2].click()">Read Reviews</a>
+        </div>
+        <div class="stock-badge" id="pd-stock">
+          <i class="fas fa-check-circle"></i> In Stock
+        </div>
+        <div class="price-main" id="pd-price">—</div>
+        <div class="price-old-row" id="pd-price-old-row" style="display:none">
+          <span class="price-old-val" id="pd-price-old">—</span>
+          <span class="price-save" id="pd-price-save">—</span>
+        </div>
+        <div class="emi-box" id="pd-emi-box">
+          <div class="emi-label"><i class="fas fa-credit-card"></i>&nbsp; Easy Monthly Installments</div>
+          <div class="emi-value" id="pd-emi">—</div>
+          <div class="emi-sub">0% interest on select banks · Terms apply</div>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Quantity</div>
+        <div class="qty-selector">
+          <button class="qty-btn qty-minus">−</button>
+          <input class="qty-input" type="number" value="1" min="1" max="10" id="product-qty">
+          <button class="qty-btn qty-plus">+</button>
+        </div>
+        <div class="detail-ctas">
+          <button class="btn btn-red btn-lg" style="flex:1" id="atc-btn" onclick="addProductToCart()">
+            <i class="fas fa-cart-plus"></i>&nbsp; ADD TO CART
+          </button>
+          <a href="cart.html" class="btn btn-outline btn-lg" style="flex:1">
+            <i class="fas fa-bolt"></i>&nbsp; BUY NOW
+          </a>
+        </div>
+        <div class="action-row">
+          <button class="action-pill"><i class="fas fa-heart"></i> Wishlist</button>
+          <button class="action-pill"><i class="fas fa-share-alt"></i> Share</button>
+          <button class="action-pill"><i class="fas fa-balance-scale"></i> Compare</button>
+        </div>
+        <div style="background:var(--grey);border-radius:var(--radius);padding:16px" id="pd-highlights-box">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">✦ Key Highlights</div>
+          <ul id="pd-highlights" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:13px;color:#555;list-style:none"></ul>
+        </div>
+      </div>
+
+    </div><!-- /detail-layout -->
+
+    <!-- TABS -->
+    <section style="margin-top:20px">
+      <div class="product-tabs">
+        <div class="tab-list" role="tablist">
+          <button class="tab-btn active">Description</button>
+          <button class="tab-btn">Specifications</button>
+          <button class="tab-btn" id="tab-reviews">Customer Reviews</button>
+        </div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" id="tab-desc">
+          <p id="pd-description" style="color:#555;line-height:1.9"></p>
+        </div>
+        <div class="tab-panel">
+          <table class="spec-table" id="pd-spec-table"><tbody></tbody></table>
+        </div>
+        <div class="tab-panel">
+          <div id="pd-reviews-wrap"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Related -->
+    <section style="padding:48px 0 0">
+      <div class="section-title">
+        <span class="icon"><i class="fas fa-th-large" style="color:var(--red)"></i></span> You May Also Like
+        <span class="bar"></span>
+      </div>
+      <div class="related-scroll" id="related-products"></div>
+    </section>
+
+  </div>
+</section>
+
+<div id="footer-mount"></div>
+<div id="toast"><span class="toast-icon">✓</span><span class="toast-msg"></span></div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/store.js"></script>
+<script src="js/components.js"></script>
+<script>
+let currentProduct = null;
+
+// Get product ID from URL
+function getProductId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id');
+}
+
+function renderProduct(prod) {
+  currentProduct = prod;
+  document.title = prod.name + ' – ' + (Store.settings?.siteName || 'CameraLK');
+
+  // Breadcrumb
+  document.getElementById('bc-category').textContent = prod.category || 'Products';
+  document.getElementById('bc-category').href = `category.html?cat=${encodeURIComponent(prod.category||'')}`;
+  document.getElementById('bc-name').textContent = prod.name.length > 50 ? prod.name.slice(0,50)+'…' : prod.name;
+
+  // Images
+  const imgs = (prod.images || []).filter(i => i && i !== '');
+  const fallback = `https://placehold.co/500x500/f5f5f5/333?text=${encodeURIComponent(prod.brand||'Product')}`;
+  const mainImg = imgs[0] || fallback;
+  const mainEl = document.getElementById('main-product-img');
+  mainEl.src = mainImg;
+  mainEl.alt = prod.name;
+
+  const thumbGrid = document.getElementById('thumb-grid');
+  const thumbSrcs = imgs.length >= 4 ? imgs.slice(0,4) :
+    [...imgs, ...Array(4 - imgs.length).fill('')].map((s,i) => s || `https://placehold.co/120x120/f5f5f5/333?text=View+${i+1}`);
+  thumbGrid.innerHTML = thumbSrcs.map((src,i) => `
+    <div class="thumb-img ${i===0?'active':''}" onclick="switchThumb(this,'${src}')">
+      <img src="${src}" alt="View ${i+1}" onerror="this.src='https://placehold.co/120x120/f5f5f5/ccc?text=IMG'">
+    </div>`).join('');
+
+  // Meta
+  document.getElementById('pd-brand').textContent = prod.brand || '';
+  document.getElementById('pd-sku').textContent = 'SKU: ' + (prod.sku || prod.id);
+  document.getElementById('pd-name').textContent = prod.name;
+  document.getElementById('pd-stars').innerHTML = '★'.repeat(Math.round(prod.rating||5));
+  document.getElementById('pd-rating-count').textContent = `${prod.rating||5} / 5 (${prod.reviewCount||0} reviews)`;
+
+  const stockEl = document.getElementById('pd-stock');
+  if (prod.inStock === false) {
+    stockEl.innerHTML = '<i class="fas fa-times-circle"></i> Out of Stock';
+    stockEl.style.color = 'var(--red)';
+    stockEl.style.background = 'rgba(217,27,35,.1)';
+  }
+
+  document.getElementById('pd-price').textContent = `Rs. ${(prod.price||0).toLocaleString()}.00`;
+
+  if (prod.oldPrice) {
+    document.getElementById('pd-price-old-row').style.display = 'flex';
+    document.getElementById('pd-price-old').textContent = `Rs. ${prod.oldPrice.toLocaleString()}.00`;
+    const save = prod.oldPrice - prod.price;
+    const pct = Math.round(save / prod.oldPrice * 100);
+    document.getElementById('pd-price-save').textContent = `You Save Rs. ${save.toLocaleString()} (${pct}% OFF)`;
+  }
+
+  if (prod.emi) document.getElementById('pd-emi').textContent = prod.emi;
+  else document.getElementById('pd-emi-box').style.display = 'none';
+
+  // Highlights
+  const hlEl = document.getElementById('pd-highlights');
+  if (prod.highlights && prod.highlights.length) {
+    hlEl.innerHTML = prod.highlights.map(h => `<li>✓ ${h}</li>`).join('');
+  } else {
+    document.getElementById('pd-highlights-box').style.display = 'none';
+  }
+
+  // Description
+  document.getElementById('pd-description').textContent = prod.description || '';
+
+  // Specs
+  const tbody = document.querySelector('#pd-spec-table tbody');
+  if (prod.specs && Object.keys(prod.specs).length) {
+    tbody.innerHTML = Object.entries(prod.specs).map(([k,v]) =>
+      `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999">No specifications available</td></tr>';
+  }
+
+  // Reviews
+  const revWrap = document.getElementById('pd-reviews-wrap');
+  if (prod.reviews && prod.reviews.length) {
+    const avgHtml = `
+      <div style="display:flex;align-items:center;gap:24px;margin-bottom:28px;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div style="font-size:56px;font-weight:900;line-height:1">${prod.rating||5}</div>
+          <div class="stars" style="justify-content:center;font-size:20px">${'★'.repeat(Math.round(prod.rating||5))}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">${prod.reviewCount||prod.reviews.length} reviews</div>
+        </div>
+      </div>`;
+    revWrap.innerHTML = avgHtml + prod.reviews.map(r => `
+      <div class="review-card">
+        <div class="review-header">
+          <div class="review-avatar">${(r.name||'A')[0]}</div>
+          <div>
+            <div class="review-name">${r.name||'Anonymous'}</div>
+            <div class="review-date">${r.date||''} · Verified Purchase</div>
+            <div class="stars" style="font-size:12px">${'★'.repeat(r.rating||5)}</div>
+          </div>
+        </div>
+        <p class="review-body">${r.text||''}</p>
+      </div>`).join('');
+  } else {
+    revWrap.innerHTML = '<p style="color:var(--muted);text-align:center;padding:30px">No reviews yet. Be the first to review this product!</p>';
+  }
+
+  // Related products (same category, exclude self)
+  const related = Store.getProductsArray().filter(p => p.id !== prod.id && p.category === prod.category).slice(0,6);
+  const relContainer = document.getElementById('related-products');
+  if (related.length) {
+    relContainer.innerHTML = related.map(p => renderProductCard(p)).join('');
+  } else {
+    relContainer.parentElement.style.display = 'none';
+  }
+
+  // Hide loader
+  document.getElementById('page-loader').style.display = 'none';
+}
+
+function switchThumb(el, src) {
+  document.getElementById('main-product-img').src = src;
+  document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function addProductToCart() {
+  if (!currentProduct) return;
+  const qty = parseInt(document.getElementById('product-qty').value) || 1;
+  const imgs = (currentProduct.images||[]).filter(i=>i);
+  for (let i=0;i<qty;i++) {
+    cart.add({
+      id:    currentProduct.id,
+      name:  currentProduct.name,
+      price: currentProduct.price,
+      img:   imgs[0] || ''
+    });
+  }
+}
+
+// Boot
+(async () => {
+  await Store.init();
+  Store.applySettings();
+
+  const id = getProductId();
+  if (id) {
+    const prod = Store.getProduct(id);
+    if (prod) {
+      renderProduct(prod);
+    } else {
+      document.getElementById('page-loader').innerHTML = `
+        <div style="text-align:center;font-family:'Poppins',sans-serif">
+          <i class="fas fa-exclamation-circle" style="font-size:48px;color:var(--red)"></i>
+          <h2 style="margin:16px 0 8px">Product Not Found</h2>
+          <p style="color:#999;margin-bottom:20px">This product may have been removed.</p>
+          <a href="category.html" style="background:var(--red);color:#fff;padding:12px 24px;border-radius:8px;font-weight:700;text-decoration:none">Browse Products</a>
+        </div>`;
+    }
+  } else {
+    // No ID — load first product as demo
+    const first = Store.getProductsArray()[0];
+    if (first) renderProduct(first);
+    else document.getElementById('page-loader').style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>

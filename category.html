@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products – CameraLK</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    .filter-toggle-btn{display:none;align-items:center;gap:8px;padding:10px 18px;background:var(--black);color:var(--white);border-radius:var(--radius);font-weight:600;font-size:13px;margin-bottom:16px}
+    @media(max-width:1024px){.filter-toggle-btn{display:flex}.filter-sidebar{display:none}.filter-sidebar.open{display:block}}
+    .view-toggle{display:flex;gap:6px}
+    .view-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);border-radius:6px;color:var(--muted);font-size:14px;transition:var(--transition)}
+    .view-btn.active,.view-btn:hover{border-color:var(--red);color:var(--red)}
+    .listing-grid.list-view{grid-template-columns:1fr}
+    .listing-grid.list-view .product-card{flex-direction:row;max-height:160px}
+    .listing-grid.list-view .card-img{width:160px;flex-shrink:0;aspect-ratio:unset;height:160px}
+    @media(max-width:640px){.listing-grid.list-view .product-card{flex-direction:column;max-height:none}.listing-grid.list-view .card-img{width:100%;height:auto;aspect-ratio:1}}
+  </style>
+</head>
+<body>
+
+<div id="header-mount"></div>
+
+<section class="page-hero">
+  <div class="container">
+    <nav class="breadcrumb">
+      <a href="index.html">Home</a>
+      <span class="sep">›</span>
+      <span class="current" id="bc-cat">Products</span>
+    </nav>
+    <h1 id="page-cat-title">All Products</h1>
+    <p id="page-cat-desc">Browse our full range of cameras, lenses and accessories</p>
+  </div>
+</section>
+
+<div class="container">
+  <div class="listing-layout">
+
+    <!-- SIDEBAR -->
+    <aside>
+      <button class="filter-toggle-btn" id="filter-toggle-btn">
+        <i class="fas fa-sliders-h"></i> Show / Hide Filters
+      </button>
+      <div class="filter-sidebar" id="filter-sidebar">
+
+        <div class="filter-card">
+          <div class="filter-card-header">Brand <i class="fas fa-chevron-down"></i></div>
+          <div class="filter-card-body" id="brand-filters"></div>
+        </div>
+
+        <div class="filter-card">
+          <div class="filter-card-header">Price Range <i class="fas fa-chevron-down"></i></div>
+          <div class="filter-card-body">
+            <input type="range" id="price-slider" min="0" max="600000" value="600000" step="5000">
+            <div class="price-range-labels"><span>Rs. 0</span><span id="price-label">Rs. 600,000</span></div>
+            <button class="filter-apply-btn" id="apply-price-btn" style="margin-top:14px">Apply Price</button>
+          </div>
+        </div>
+
+        <div class="filter-card">
+          <div class="filter-card-header">Condition <i class="fas fa-chevron-down"></i></div>
+          <div class="filter-card-body">
+            <label class="checkbox-item"><input type="checkbox" value="New" class="cond-filter" checked> New</label>
+            <label class="checkbox-item"><input type="checkbox" value="Used" class="cond-filter"> Used</label>
+            <label class="checkbox-item"><input type="checkbox" value="Refurbished" class="cond-filter"> Refurbished</label>
+          </div>
+        </div>
+
+        <div class="filter-card">
+          <div class="filter-card-header">Availability <i class="fas fa-chevron-down"></i></div>
+          <div class="filter-card-body">
+            <label class="checkbox-item"><input type="checkbox" id="avail-filter" checked> In Stock Only</label>
+          </div>
+        </div>
+
+        <button class="filter-apply-btn" id="apply-all-btn">Apply Filters</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div>
+      <div class="listing-topbar">
+        <div class="result-count">Showing <span id="result-count">0</span> products</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="view-toggle">
+            <button class="view-btn active" id="grid-view-btn"><i class="fas fa-th"></i></button>
+            <button class="view-btn" id="list-view-btn"><i class="fas fa-list"></i></button>
+          </div>
+          <select class="sort-select" id="sort-select">
+            <option value="featured">Sort: Featured</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="newest">Newest First</option>
+            <option value="rating">Best Rated</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="listing-grid" id="listing-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <nav class="pagination" id="pagination"></nav>
+    </div>
+  </div>
+</div>
+
+<div id="footer-mount"></div>
+<div id="toast"><span class="toast-icon">✓</span><span class="toast-msg"></span></div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/store.js"></script>
+<script src="js/components.js"></script>
+<script>
+const PER_PAGE = 12;
+let allProducts = [];
+let filtered    = [];
+let currentPage = 1;
+let maxPrice    = 600000;
+let selectedBrands = [];
+let selectedConds  = ['New'];
+let stockOnly      = true;
+let sortMode       = 'featured';
+
+function applyFilters() {
+  const params = new URLSearchParams(window.location.search);
+  const cat    = params.get('cat')    || '';
+  const brand  = params.get('brand')  || '';
+  const search = params.get('search') || '';
+
+  // Pre-fill search box
+  if (search) {
+    const si = document.getElementById('search-input');
+    if (si) si.value = search;
+  }
+
+  filtered = allProducts.filter(p => {
+    if (cat && p.category !== cat) return false;
+    if (brand && p.brand !== brand) return false;
+    if (p.price > maxPrice) return false;
+    if (selectedBrands.length && !selectedBrands.includes(p.brand)) return false;
+    if (stockOnly && !p.inStock) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const hay = [p.name, p.brand, p.category, p.sku, p.description].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  if (sortMode === 'price-asc')  filtered.sort((a,b) => a.price - b.price);
+  if (sortMode === 'price-desc') filtered.sort((a,b) => b.price - a.price);
+  if (sortMode === 'rating')     filtered.sort((a,b) => (b.rating||0) - (a.rating||0));
+  if (sortMode === 'newest')     filtered.reverse();
+
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  const start = (currentPage - 1) * PER_PAGE;
+  const page  = filtered.slice(start, start + PER_PAGE);
+  const grid  = document.getElementById('listing-grid');
+  document.getElementById('result-count').textContent = filtered.length;
+
+  if (page.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)">
+      <i class="fas fa-search" style="font-size:48px;display:block;margin-bottom:16px;color:var(--border)"></i>
+      <h3>No products found</h3><p>Try adjusting your filters.</p>
+    </div>`;
+  } else {
+    grid.innerHTML = page.map(p => renderProductCard(p)).join('');
+  }
+
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filtered.length / PER_PAGE);
+  const pg = document.getElementById('pagination');
+  if (total <= 1) { pg.innerHTML = ''; return; }
+
+  let html = '';
+  if (currentPage > 1) html += `<a href="#" onclick="goPage(${currentPage-1});return false">‹</a>`;
+  for (let i=1; i<=total; i++) {
+    html += i === currentPage
+      ? `<span class="active">${i}</span>`
+      : `<a href="#" onclick="goPage(${i});return false">${i}</a>`;
+  }
+  if (currentPage < total) html += `<a href="#" onclick="goPage(${currentPage+1});return false">›</a>`;
+  pg.innerHTML = html;
+}
+
+function goPage(n) { currentPage = n; renderPage(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+(async () => {
+  await Store.init();
+  Store.applySettings();
+
+  allProducts = Store.getProductsArray();
+
+  // Build brand filters
+  const brands = [...new Set(allProducts.map(p=>p.brand).filter(Boolean))];
+  document.getElementById('brand-filters').innerHTML = brands.map(b =>
+    `<label class="checkbox-item"><input type="checkbox" class="brand-filter" value="${b}"> ${b}</label>`
+  ).join('');
+
+  // Category / search title from URL
+  const params  = new URLSearchParams(window.location.search);
+  const cat     = params.get('cat')    || '';
+  const brand   = params.get('brand')  || '';
+  const search  = params.get('search') || '';
+  const siteName = Store.settings?.siteName || 'CameraLK';
+
+  if (search) {
+    document.getElementById('bc-cat').textContent       = 'Search Results';
+    document.getElementById('page-cat-title').textContent = `Results for "${search}"`;
+    document.getElementById('page-cat-desc').textContent  = 'Showing products matching your search';
+    document.title = `Search: ${search} – ${siteName}`;
+  } else if (brand) {
+    document.getElementById('bc-cat').textContent       = brand;
+    document.getElementById('page-cat-title').textContent = brand + ' Products';
+    document.getElementById('page-cat-desc').textContent  = `Browse all ${brand} products`;
+    document.title = brand + ' – ' + siteName;
+  } else if (cat) {
+    document.getElementById('bc-cat').textContent       = cat;
+    document.getElementById('page-cat-title').textContent = cat;
+    document.getElementById('page-cat-desc').textContent  = `Browse all ${cat} products`;
+    document.title = cat + ' – ' + siteName;
+  }
+
+  // Filter events
+  document.getElementById('apply-price-btn').addEventListener('click', () => {
+    maxPrice = parseInt(document.getElementById('price-slider').value);
+    applyFilters();
+  });
+  document.getElementById('apply-all-btn').addEventListener('click', () => {
+    selectedBrands = [...document.querySelectorAll('.brand-filter:checked')].map(c=>c.value);
+    maxPrice = parseInt(document.getElementById('price-slider').value);
+    stockOnly = document.getElementById('avail-filter').checked;
+    applyFilters();
+  });
+  document.getElementById('sort-select').addEventListener('change', e => {
+    sortMode = e.target.value; applyFilters();
+  });
+
+  // Mobile filter toggle
+  document.getElementById('filter-toggle-btn')?.addEventListener('click', () =>
+    document.getElementById('filter-sidebar')?.classList.toggle('open'));
+
+  // View toggle
+  const grid = document.getElementById('listing-grid');
+  document.getElementById('grid-view-btn')?.addEventListener('click', function() {
+    grid?.classList.remove('list-view');
+    this.classList.add('active');
+    document.getElementById('list-view-btn')?.classList.remove('active');
+  });
+  document.getElementById('list-view-btn')?.addEventListener('click', function() {
+    grid?.classList.add('list-view');
+    this.classList.add('active');
+    document.getElementById('grid-view-btn')?.classList.remove('active');
+  });
+
+  initFilterAccordions();
+  initPriceSlider();
+  applyFilters();
+})();
+</script>
+</body>
+</html>

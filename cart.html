@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Cart – CameraLK</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    .cart-page-wrap { background: #f8f8f8; min-height: 80vh; padding: 40px 0; }
+
+    /* ── STEPS ── */
+    .checkout-steps {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; margin-bottom: 36px;
+    }
+    .cs { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .cs-circle {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px;
+      border: 2px solid #e0e0e0; background: #fff; color: #aaa;
+    }
+    .cs.active .cs-circle  { background: var(--red); border-color: var(--red); color: #fff; }
+    .cs.done  .cs-circle   { background: #27ae60; border-color: #27ae60; color: #fff; }
+    .cs-label { font-size: 11px; font-weight: 600; color: #aaa; }
+    .cs.active .cs-label   { color: var(--red); }
+    .cs-line  { flex: 1; height: 2px; background: #e0e0e0; min-width: 50px; }
+    .cs-line.done { background: #27ae60; }
+
+    /* ── CART TABLE ── */
+    .cart-card {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 16px rgba(0,0,0,.06);
+    }
+    .cart-card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cart-card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .cart-card-header h3 i { color: var(--red); }
+
+    .cart-table { width: 100%; border-collapse: collapse; }
+    .cart-table th {
+      background: #fafafa; padding: 13px 20px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: #888;
+      border-bottom: 1px solid #f0f0f0; text-align: left;
+    }
+    .cart-table td {
+      padding: 18px 20px;
+      border-bottom: 1px solid #f7f7f7;
+      vertical-align: middle; font-size: 14px;
+    }
+    .cart-table tbody tr:last-child td { border-bottom: none; }
+    .cart-table tbody tr { transition: background .15s; }
+    .cart-table tbody tr:hover td { background: #fafcff; }
+
+    .ct-product { display: flex; align-items: center; gap: 14px; }
+    .ct-thumb {
+      width: 76px; height: 76px; object-fit: contain;
+      background: #f8f8f8; border-radius: 10px; padding: 6px;
+      border: 1px solid #f0f0f0; flex-shrink: 0;
+    }
+    .ct-info .ct-name { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; max-width: 240px; }
+    .ct-info .ct-brand { font-size: 12px; color: #aaa; }
+    .ct-price { font-size: 15px; font-weight: 700; color: #1a1a1a; white-space: nowrap; }
+    .ct-subtotal { font-size: 16px; font-weight: 800; color: var(--red); white-space: nowrap; }
+
+    /* qty control */
+    .qty-ctrl {
+      display: flex; align-items: center;
+      border: 1.5px solid #e0e0e0; border-radius: 8px;
+      overflow: hidden; width: fit-content;
+    }
+    .qty-ctrl button {
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: #555;
+      background: #f8f8f8; transition: .15s;
+    }
+    .qty-ctrl button:hover { background: var(--red); color: #fff; }
+    .qty-ctrl input {
+      width: 46px; text-align: center; font-size: 14px; font-weight: 700;
+      border: none; border-left: 1.5px solid #e0e0e0; border-right: 1.5px solid #e0e0e0;
+      height: 34px; outline: none; font-family: 'Poppins', sans-serif;
+    }
+
+    .ct-remove {
+      width: 34px; height: 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #bbb; font-size: 15px; transition: .15s;
+      border: 1.5px solid #f0f0f0; background: #fff;
+    }
+    .ct-remove:hover { color: #fff; background: var(--red); border-color: var(--red); }
+
+    /* cart actions row */
+    .cart-actions {
+      padding: 16px 24px;
+      background: #fafafa; border-top: 1px solid #f0f0f0;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .cart-continue-link {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; font-weight: 600; color: #888;
+      text-decoration: none; transition: color .15s;
+    }
+    .cart-continue-link:hover { color: var(--red); }
+
+    /* ── EMPTY STATE ── */
+    .cart-empty-state {
+      text-align: center; padding: 72px 24px;
+      background: #fff; border-radius: 12px;
+      border: 1px solid #e8e8e8; box-shadow: 0 2px 16px rgba(0,0,0,.06);
+    }
+    .cart-empty-state .empty-icon {
+      width: 90px; height: 90px; border-radius: 50%;
+      background: #f5f5f5; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 22px; font-size: 38px; color: #ccc;
+    }
+    .cart-empty-state h3 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .cart-empty-state p { color: #888; font-size: 14px; margin-bottom: 26px; }
+
+    /* ── SUMMARY CARD ── */
+    .summary-card {
+      background: #fff; border: 1px solid #e8e8e8; border-radius: 12px;
+      overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,.06);
+      position: sticky; top: 84px;
+    }
+    .summary-card-header {
+      padding: 18px 22px; border-bottom: 1px solid #f0f0f0;
+      font-size: 15px; font-weight: 800;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .summary-card-header i { color: var(--red); }
+    .summary-card-body { padding: 20px 22px; }
+
+    .sum-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 0; border-bottom: 1px solid #f8f8f8;
+      font-size: 14px;
+    }
+    .sum-row:last-of-type { border-bottom: none; }
+    .sum-row.total {
+      font-size: 18px; font-weight: 800;
+      border-top: 2px solid #e8e8e8; padding-top: 14px; margin-top: 6px;
+    }
+    .sum-row.total .sum-val { color: var(--red); }
+    .sum-label { color: #666; }
+    .sum-val { font-weight: 700; color: #1a1a1a; }
+
+    /* free shipping banner */
+    .free-ship-banner {
+      background: linear-gradient(90deg, #f0fff4, #e8f8ee);
+      border: 1px solid #b7ebc8; border-radius: 8px;
+      padding: 10px 14px; font-size: 13px; font-weight: 600;
+      color: #27ae60; display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    /* coupon */
+    .coupon-wrap {
+      display: flex; gap: 8px; margin: 14px 0 18px;
+    }
+    .coupon-wrap input {
+      flex: 1; padding: 10px 13px; border: 1.5px solid #e0e0e0;
+      border-radius: 8px; font-size: 13px; outline: none;
+      font-family: 'Poppins', sans-serif; transition: border-color .15s;
+    }
+    .coupon-wrap input:focus { border-color: var(--red); }
+    .coupon-wrap button {
+      padding: 10px 16px; background: #1a1a1a; color: #fff;
+      border-radius: 8px; font-size: 13px; font-weight: 700;
+      transition: background .15s; font-family: 'Poppins', sans-serif;
+    }
+    .coupon-wrap button:hover { background: #333; }
+
+    /* trust badges */
+    .trust-badges {
+      display: flex; justify-content: center; gap: 18px;
+      margin-top: 16px; padding-top: 16px;
+      border-top: 1px solid #f0f0f0; flex-wrap: wrap;
+    }
+    .trust-item { text-align: center; font-size: 11px; color: #aaa; }
+    .trust-item i { font-size: 20px; display: block; margin-bottom: 4px; }
+
+    /* payment logos */
+    .pay-logos { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+    .pay-logo {
+      padding: 3px 10px; background: #f5f5f5; border-radius: 5px;
+      font-size: 11px; font-weight: 800; color: #555; border: 1px solid #e8e8e8;
+    }
+
+    @media (max-width: 900px) {
+      .cart-layout { grid-template-columns: 1fr !important; }
+      .summary-card { position: static; }
+    }
+    @media (max-width: 640px) {
+      .cart-table thead { display: none; }
+      .cart-table td { display: block; padding: 8px 14px; }
+      .cart-table td::before { content: attr(data-label) ': '; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #aaa; display: block; margin-bottom: 4px; }
+      .ct-product { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header-mount"></div>
+
+<div class="cart-page-wrap">
+  <div class="container">
+
+    <!-- Page title -->
+    <div style="margin-bottom:28px">
+      <nav style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;margin-bottom:10px">
+        <a href="index.html" style="color:#aaa;transition:.15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='#aaa'">Home</a>
+        <span>›</span><span style="color:#333">Shopping Cart</span>
+      </nav>
+      <h1 style="font-size:28px;font-weight:900;color:#1a1a1a">My Shopping Cart</h1>
+    </div>
+
+    <!-- Steps -->
+    <div class="checkout-steps">
+      <div class="cs active">
+        <div class="cs-circle"><i class="fas fa-shopping-cart" style="font-size:14px"></i></div>
+        <div class="cs-label">Cart</div>
+      </div>
+      <div class="cs-line"></div>
+      <div class="cs">
+        <div class="cs-circle">2</div>
+        <div class="cs-label">Checkout</div>
+      </div>
+      <div class="cs-line"></div>
+      <div class="cs">
+        <div class="cs-circle">3</div>
+        <div class="cs-label">Confirmed</div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="cart-empty-state" id="cart-empty" style="display:none">
+      <div class="empty-icon"><i class="fas fa-shopping-cart"></i></div>
+      <h3>Your cart is empty</h3>
+      <p>Looks like you haven't added anything yet.<br>Browse our collection and find something you love!</p>
+      <a href="category.html" class="btn btn-red btn-lg" style="display:inline-flex;align-items:center;gap:8px">
+        <i class="fas fa-arrow-left"></i> Continue Shopping
+      </a>
+    </div>
+
+    <!-- Cart Content -->
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start" class="cart-layout" id="cart-content">
+
+      <!-- Left: Table -->
+      <div>
+        <div class="cart-card" id="cart-table-wrap">
+          <div class="cart-card-header">
+            <h3><i class="fas fa-box"></i> Cart Items (<span id="cart-item-count">0</span>)</h3>
+            <button onclick="clearAllCart()" style="font-size:12px;font-weight:600;color:#aaa;display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid #e8e8e8;border-radius:7px;transition:.15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='#e8e8e8';this.style.color='#aaa'">
+              <i class="fas fa-trash"></i> Clear All
+            </button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th style="width:40%">Product</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Subtotal</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="cart-tbody"></tbody>
+            </table>
+          </div>
+          <div class="cart-actions">
+            <a href="category.html" class="cart-continue-link">
+              <i class="fas fa-arrow-left"></i> Continue Shopping
+            </a>
+            <div style="display:flex;gap:10px">
+              <button onclick="renderCartPage()" style="padding:9px 18px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-weight:600;color:#888;transition:.15s" onmouseover="this.style.borderColor='#333';this.style.color='#333'" onmouseout="this.style.borderColor='#e0e0e0';this.style.color='#888'">
+                <i class="fas fa-sync"></i> Update Cart
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- You may also like -->
+        <div id="related-cart-wrap" style="margin-top:24px;display:none">
+          <div class="section-title" style="margin-bottom:16px">
+            <span class="icon">💡</span> You Might Also Like
+            <span class="bar"></span>
+          </div>
+          <div id="related-cart-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px"></div>
+        </div>
+      </div>
+
+      <!-- Right: Summary -->
+      <div>
+        <div class="summary-card">
+          <div class="summary-card-header"><i class="fas fa-receipt"></i> Order Summary</div>
+          <div class="summary-card-body">
+
+            <div class="free-ship-banner">
+              <i class="fas fa-truck"></i>
+              <span id="ship-banner-text">Free shipping on orders over Rs. 15,000!</span>
+            </div>
+
+            <div class="sum-row"><span class="sum-label">Subtotal</span><span class="sum-val" id="sum-sub">Rs. 0.00</span></div>
+            <div class="sum-row"><span class="sum-label">Shipping</span><span class="sum-val" id="sum-ship">Rs. 450.00</span></div>
+            <div class="sum-row"><span class="sum-label">Tax (8%)</span><span class="sum-val" id="sum-tax">Rs. 0.00</span></div>
+            <div class="sum-row" id="discount-row" style="display:none"><span class="sum-label" style="color:#27ae60"><i class="fas fa-tag"></i> Discount</span><span class="sum-val" id="sum-disc" style="color:#27ae60">– Rs. 0.00</span></div>
+
+            <!-- Coupon -->
+            <div class="coupon-wrap">
+              <input type="text" id="coupon-input" placeholder="Have a coupon code?">
+              <button onclick="applyCoupon()">Apply</button>
+            </div>
+
+            <div class="sum-row total">
+              <span>Total</span>
+              <span class="sum-val" id="sum-total">Rs. 0.00</span>
+            </div>
+
+            <a href="checkout.html" class="btn btn-red btn-full btn-lg" style="margin-top:18px;font-size:15px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">
+              <i class="fas fa-lock"></i> Proceed to Checkout
+            </a>
+
+            <div class="trust-badges">
+              <div class="trust-item"><i class="fas fa-lock" style="color:#27ae60"></i>SSL Secure</div>
+              <div class="trust-item"><i class="fas fa-undo" style="color:var(--red)"></i>Easy Returns</div>
+              <div class="trust-item"><i class="fas fa-award" style="color:#e87722"></i>Warranty</div>
+              <div class="trust-item"><i class="fas fa-headset" style="color:#555"></i>24/7 Support</div>
+            </div>
+
+            <div class="pay-logos">
+              <div class="pay-logo" style="color:#1a1f71">VISA</div>
+              <div class="pay-logo" style="color:#eb001b">MC</div>
+              <div class="pay-logo" style="color:#003087">AmEx</div>
+              <div class="pay-logo">COD</div>
+              <div class="pay-logo">Bank</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo helper -->
+        <div style="margin-top:16px;padding:16px;background:#fff;border:1px solid #e8e8e8;border-radius:10px;text-align:center">
+          <p style="font-size:12px;color:#aaa;margin-bottom:10px">🛒 Demo: Add sample products</p>
+          <button onclick="addDemoItems()" style="padding:9px 18px;background:#1a1a1a;color:#fff;border-radius:8px;font-size:13px;font-weight:700;font-family:'Poppins',sans-serif;transition:background .15s" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#1a1a1a'">
+            <i class="fas fa-plus"></i> Add Demo Products
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /cart-layout -->
+  </div>
+</div>
+
+<div id="footer-mount"></div>
+<div id="toast"><span class="toast-icon">✓</span><span class="toast-msg"></span></div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/store.js"></script>
+<script src="js/components.js"></script>
+<script>
+let discountAmount = 0;
+
+function fmt(n) { return 'Rs. ' + n.toLocaleString() + '.00'; }
+
+function renderCartPage() {
+  const tbody     = document.getElementById('cart-tbody');
+  const emptyEl   = document.getElementById('cart-empty');
+  const contentEl = document.getElementById('cart-content');
+  const countEl   = document.getElementById('cart-item-count');
+
+  if (!tbody) return;
+
+  if (cart.items.length === 0) {
+    emptyEl.style.display   = 'block';
+    contentEl.style.display = 'none';
+    return;
+  }
+
+  emptyEl.style.display   = 'none';
+  contentEl.style.display = 'grid';
+  countEl.textContent = cart.count();
+
+  tbody.innerHTML = cart.items.map(item => `
+    <tr data-id="${item.id}">
+      <td data-label="Product">
+        <div class="ct-product">
+          <img class="ct-thumb" src="${item.img||'https://placehold.co/76x76/f8f8f8/ccc?text=IMG'}"
+            alt="${item.name}" onerror="this.src='https://placehold.co/76x76/f8f8f8/ccc?text=IMG'">
+          <div class="ct-info">
+            <div class="ct-name">${item.name}</div>
+            <div class="ct-brand">Unit: ${fmt(item.price)}</div>
+          </div>
+        </div>
+      </td>
+      <td data-label="Price"><span class="ct-price">${fmt(item.price)}</span></td>
+      <td data-label="Quantity">
+        <div class="qty-ctrl">
+          <button class="cq-minus">−</button>
+          <input class="cq-qty" type="number" value="${item.qty}" min="1" max="99" readonly>
+          <button class="cq-plus">+</button>
+        </div>
+      </td>
+      <td data-label="Subtotal"><span class="ct-subtotal">${fmt(item.price * item.qty)}</span></td>
+      <td data-label="Remove">
+        <button class="ct-remove cq-remove" title="Remove item"><i class="fas fa-trash-alt"></i></button>
+      </td>
+    </tr>`).join('');
+
+  // Bind buttons
+  tbody.querySelectorAll('tr').forEach(row => {
+    const id   = row.dataset.id;
+    const item = cart.items.find(i => i.id === id);
+    if (!item) return;
+    row.querySelector('.cq-plus')?.addEventListener('click', () => {
+      cart.updateQty(id, item.qty + 1); renderCartPage();
+    });
+    row.querySelector('.cq-minus')?.addEventListener('click', () => {
+      cart.updateQty(id, item.qty - 1); renderCartPage();
+    });
+    row.querySelector('.cq-remove')?.addEventListener('click', () => {
+      cart.remove(id); renderCartPage();
+      showToast('Item removed from cart');
+    });
+  });
+
+  updateSummary();
+  loadRelatedProducts();
+}
+
+function updateSummary() {
+  const sub      = cart.total();
+  const shipping = sub >= 15000 ? 0 : 450;
+  const tax      = Math.round(sub * 0.08);
+  const total    = sub + shipping + tax - discountAmount;
+
+  document.getElementById('sum-sub').textContent   = fmt(sub);
+  document.getElementById('sum-ship').textContent  = shipping === 0 ? 'Free 🎉' : fmt(shipping);
+  document.getElementById('sum-tax').textContent   = fmt(tax);
+  document.getElementById('sum-total').textContent = fmt(Math.max(0, total));
+
+  // Shipping banner
+  const banner = document.getElementById('ship-banner-text');
+  if (sub >= 15000) {
+    banner.innerHTML = '🎉 You qualify for <strong>Free Shipping!</strong>';
+    document.querySelector('.free-ship-banner').style.background = 'linear-gradient(90deg,#f0fff4,#e8f8ee)';
+  } else {
+    const remaining = 15000 - sub;
+    banner.innerHTML = `Add <strong>${fmt(remaining)}</strong> more for free shipping!`;
+  }
+
+  // Discount row
+  if (discountAmount > 0) {
+    document.getElementById('discount-row').style.display = 'flex';
+    document.getElementById('sum-disc').textContent = '− ' + fmt(discountAmount);
+  }
+}
+
+function applyCoupon() {
+  const code = document.getElementById('coupon-input').value.trim().toUpperCase();
+  if (!code) { showToast('Please enter a coupon code'); return; }
+  const coupons = { 'CLK10': 0.10, 'SAVE500': null, 'WELCOME': 0.05 };
+  if (code === 'CLK10')  { discountAmount = Math.round(cart.total() * 0.10); showToast('✓ 10% discount applied!'); }
+  else if (code === 'SAVE500') { discountAmount = 500; showToast('✓ Rs. 500 discount applied!'); }
+  else if (code === 'WELCOME') { discountAmount = Math.round(cart.total() * 0.05); showToast('✓ 5% welcome discount applied!'); }
+  else { showToast('Invalid coupon code. Try CLK10, SAVE500, or WELCOME'); return; }
+  updateSummary();
+}
+
+function clearAllCart() {
+  if (!cart.items.length) return;
+  cart.items = []; cart.save(); updateCartBadge();
+  renderCartPage(); showToast('Cart cleared');
+}
+
+function loadRelatedProducts() {
+  const wrap = document.getElementById('related-cart-wrap');
+  const grid = document.getElementById('related-cart-grid');
+  if (!wrap || !grid) return;
+  const cartIds = cart.items.map(i => i.id);
+  const related = Store.getProductsArray().filter(p => !cartIds.includes(p.id)).slice(0, 3);
+  if (related.length) {
+    wrap.style.display = 'block';
+    grid.innerHTML = related.map(p => renderProductCard(p)).join('');
+  }
+}
+
+function addDemoItems() {
+  [
+    { id:'cat-001', name:'Sony Alpha A7 IV Full-Frame Mirrorless Camera Body', price:489000, img:'https://placehold.co/76x76/f8f8f8/333?text=Sony+A7IV' },
+    { id:'deal-002', name:'DJI Mini 4 Pro Drone – Fly More Combo', price:198500, img:'https://placehold.co/76x76/f8f8f8/333?text=DJI+Mini4' },
+    { id:'rel-001', name:'Sony FE 24-70mm f/2.8 GM II Zoom Lens', price:299000, img:'https://placehold.co/76x76/f8f8f8/333?text=Sony+2470' }
+  ].forEach(d => cart.add(d));
+  renderCartPage();
+}
+
+// Boot
+document.addEventListener('DOMContentLoaded', async () => {
+  await Store.init();
+  renderCartPage();
+});
+</script>
+</body>
+</html>

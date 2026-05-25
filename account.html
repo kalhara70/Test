@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Account – CameraLK</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDKs (all three needed) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    :root { --red:#D91B23; --green:#27ae60; --orange:#e87722; }
+    .acc-page-bg { background:#f8f8f8; min-height:80vh; padding:40px 0; }
+
+    /* ════════════════════════════════════════════════
+       AUTH SCREENS
+    ════════════════════════════════════════════════ */
+    .auth-overlay {
+      position:fixed;inset:0;
+      background:linear-gradient(135deg,#0a0a0a 0%,#1a0000 100%);
+      z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;
+    }
+    .auth-card {
+      background:#fff;border-radius:18px;width:100%;max-width:460px;
+      box-shadow:0 32px 80px rgba(0,0,0,.5);overflow:hidden;
+    }
+    .auth-logo-bar {
+      background:linear-gradient(135deg,#1a0000,#0a0a0a);
+      padding:24px;text-align:center;
+    }
+    .auth-logo-bar .logo-mark { font-size:28px;font-weight:900;color:var(--red); }
+    .auth-logo-bar .logo-mark span { color:#fff; }
+    .auth-logo-bar p { font-size:12px;color:rgba(255,255,255,.5);margin-top:4px; }
+
+    .auth-tabs { display:flex;border-bottom:2px solid #f0f0f0; }
+    .atab {
+      flex:1;padding:15px;font-size:14px;font-weight:700;text-align:center;
+      color:#bbb;cursor:pointer;transition:.15s;border-bottom:3px solid transparent;margin-bottom:-2px;
+      background:none;border-top:none;border-left:none;border-right:none;font-family:'Poppins',sans-serif;
+    }
+    .atab.active { color:var(--red);border-bottom-color:var(--red); }
+    .auth-panel { display:none;padding:28px 32px 32px; }
+    .auth-panel.active { display:block; }
+
+    .af { margin-bottom:16px; }
+    .af label { display:block;font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px; }
+    .af .input-wrap { position:relative; }
+    .af .input-wrap i { position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;color:#bbb;pointer-events:none; }
+    .af input {
+      width:100%;padding:12px 14px 12px 38px;border:1.5px solid #e8e8e8;border-radius:10px;
+      font-size:14px;outline:none;font-family:'Poppins',sans-serif;transition:border-color .15s;
+    }
+    .af input:focus { border-color:var(--red); }
+    .af input.err { border-color:var(--red);background:#fff8f8; }
+    .af input.ok  { border-color:var(--green);background:#f0fff4; }
+    .af .hint { font-size:11px;margin-top:4px;min-height:14px; }
+    .af .hint.err { color:var(--red); }
+    .af .hint.ok  { color:var(--green); }
+
+    .auth-btn {
+      width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:800;
+      font-family:'Poppins',sans-serif;cursor:pointer;transition:.15s;display:flex;
+      align-items:center;justify-content:center;gap:8px;border:none;margin-top:4px;
+    }
+    .auth-btn-red { background:var(--red);color:#fff; }
+    .auth-btn-red:hover { background:#b5161e; }
+    .auth-btn-red:disabled { background:#e88;cursor:not-allowed; }
+
+    .google-btn {
+      width:100%;padding:12px;border:1.5px solid #e8e8e8;border-radius:10px;
+      font-size:14px;font-weight:700;font-family:'Poppins',sans-serif;
+      cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;
+      gap:10px;background:#fff;color:#333;margin-top:10px;
+    }
+    .google-btn:hover { border-color:#4285F4;background:#f8f9ff; }
+    .google-icon { width:20px;height:20px;flex-shrink:0; }
+
+    .auth-divider { display:flex;align-items:center;gap:10px;margin:16px 0; }
+    .auth-divider::before,.auth-divider::after { content:'';flex:1;height:1px;background:#f0f0f0; }
+    .auth-divider span { font-size:12px;color:#bbb;white-space:nowrap; }
+
+    .auth-link { text-align:center;font-size:13px;color:#aaa;margin-top:14px; }
+    .auth-link a { color:var(--red);font-weight:700;cursor:pointer;text-decoration:none; }
+    .auth-link a:hover { text-decoration:underline; }
+
+    .auth-err-global {
+      background:#fff0f0;border:1px solid #fca5a5;border-radius:8px;
+      padding:10px 14px;font-size:13px;color:#dc2626;margin-top:12px;
+      display:none;align-items:center;gap:8px;
+    }
+    .auth-err-global.show { display:flex; }
+
+    .auth-spinner { display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* Forgot password screen */
+    #reset-panel { display:none;padding:28px 32px 32px; }
+    #reset-panel.active { display:block; }
+
+    /* ════════════════════════════════════════════════
+       ACCOUNT LAYOUT
+    ════════════════════════════════════════════════ */
+    #acc-app { display:none; }
+    .acc-layout { display:grid;grid-template-columns:270px 1fr;gap:24px;align-items:start; }
+    @media(max-width:860px){ .acc-layout{grid-template-columns:1fr} }
+
+    /* Sidebar */
+    .acc-sidebar {
+      background:#fff;border:1px solid #ebebeb;border-radius:14px;
+      overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.06);position:sticky;top:84px;
+    }
+    .acc-profile-hero {
+      background:linear-gradient(135deg,#1a1a1a 0%,#2d0000 100%);
+      padding:28px 20px 22px;text-align:center;
+    }
+    .acc-avatar-wrap { position:relative;width:80px;height:80px;margin:0 auto 14px; }
+    .acc-avatar-img {
+      width:80px;height:80px;border-radius:50%;
+      border:3px solid rgba(255,255,255,.2);object-fit:cover;
+      background:var(--red);display:flex;align-items:center;justify-content:center;
+      font-size:30px;font-weight:900;color:#fff;
+    }
+    .acc-avatar-edit {
+      position:absolute;bottom:0;right:0;width:26px;height:26px;
+      background:var(--red);border-radius:50%;border:2px solid #1a1a1a;
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:10px;cursor:pointer;overflow:hidden;
+    }
+    .acc-avatar-edit input { position:absolute;inset:0;opacity:0;cursor:pointer; }
+    .sidebar-name  { font-size:16px;font-weight:800;color:#fff;margin-bottom:3px; }
+    .sidebar-email { font-size:12px;color:rgba(255,255,255,.5); }
+    .member-badge {
+      display:inline-flex;align-items:center;gap:5px;margin-top:10px;
+      background:rgba(217,27,35,.25);border:1px solid rgba(217,27,35,.4);
+      color:#ffa0a0;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+    }
+    .fb-badge {
+      display:inline-flex;align-items:center;gap:5px;margin-top:6px;
+      background:rgba(66,133,244,.2);border:1px solid rgba(66,133,244,.3);
+      color:#93bbff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;
+    }
+
+    .acc-nav { padding:8px 0; }
+    .acc-ni {
+      display:flex;align-items:center;gap:12px;padding:12px 20px;
+      color:#777;font-size:13.5px;font-weight:500;cursor:pointer;
+      transition:.12s;border-left:3px solid transparent;
+    }
+    .acc-ni:hover { color:#1a1a1a;background:#fafafa; }
+    .acc-ni.active { color:var(--red);background:#fff5f5;border-left-color:var(--red);font-weight:700; }
+    .acc-ni i { width:18px;text-align:center;font-size:14px;flex-shrink:0; }
+    .acc-ni .ni-badge { margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px; }
+    .acc-divider { height:1px;background:#f5f5f5;margin:4px 0; }
+
+    /* Main */
+    .acc-main {}
+    .acc-panel { display:none; }
+    .acc-panel.active { display:block; }
+
+    /* Cards */
+    .ac {
+      background:#fff;border:1px solid #ebebeb;border-radius:14px;
+      overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.05);margin-bottom:20px;
+    }
+    .ac-hdr {
+      padding:18px 24px;border-bottom:1px solid #f5f5f5;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .ac-hdr h3 { font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px; }
+    .ac-hdr h3 i { color:var(--red); }
+    .ac-body { padding:24px; }
+
+    /* Stats bar */
+    .stats-bar {
+      display:grid;grid-template-columns:repeat(4,1fr);
+      border:1px solid #ebebeb;border-radius:14px;overflow:hidden;
+      background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.05);margin-bottom:22px;
+    }
+    .sb-item { padding:18px 14px;text-align:center;border-right:1px solid #f5f5f5; }
+    .sb-item:last-child { border-right:none; }
+    .sb-val { font-size:24px;font-weight:900;color:#1a1a1a; }
+    .sb-lbl { font-size:11px;color:#aaa;margin-top:2px; }
+    .sb-ico { font-size:20px;margin-bottom:6px; }
+    @media(max-width:560px){ .stats-bar{grid-template-columns:1fr 1fr} .sb-item:nth-child(2){border-right:none} .sb-item:nth-child(1),.sb-item:nth-child(2){border-bottom:1px solid #f5f5f5} }
+
+    /* Form grid */
+    .fg2 { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+    @media(max-width:560px){ .fg2{grid-template-columns:1fr} }
+    .fgf { grid-column:1/-1; }
+    .fgrp { display:flex;flex-direction:column;gap:6px; }
+    .fgrp label { font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px; }
+    .fctl {
+      padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:9px;
+      font-size:14px;outline:none;font-family:'Poppins',sans-serif;
+      transition:border-color .15s;background:#fff;width:100%;
+    }
+    .fctl:focus { border-color:var(--red); }
+    .fctl:disabled { background:#f8f8f8;color:#aaa; }
+    textarea.fctl { resize:vertical; }
+
+    /* Orders */
+    .order-tbl { width:100%;border-collapse:collapse;font-size:13px; }
+    .order-tbl th { background:#fafafa;padding:10px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#aaa;border-bottom:1px solid #f0f0f0; }
+    .order-tbl td { padding:14px 16px;border-bottom:1px solid #f8f8f8;vertical-align:middle; }
+    .order-tbl tr:last-child td { border-bottom:none; }
+    .order-tbl tr:hover td { background:#fafcff; }
+    .os { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700; }
+    .os-delivered { background:#f0fff4;color:#27ae60; }
+    .os-processing { background:#fff8f0;color:#e87722; }
+    .os-cancelled  { background:#fff0f0;color:#dc2626; }
+    .os-shipped    { background:#f0f4ff;color:#3b82f6; }
+    .os-pending    { background:#f5f5f5;color:#888; }
+
+    /* Wishlist */
+    .wl-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
+    @media(max-width:640px){ .wl-grid{grid-template-columns:1fr 1fr} }
+
+    /* Addresses */
+    .addr-grid { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+    @media(max-width:600px){ .addr-grid{grid-template-columns:1fr} }
+    .addr-card { border:1.5px solid #e8e8e8;border-radius:10px;padding:18px;position:relative; }
+    .addr-card.default { border-color:var(--red); }
+    .addr-default-badge { position:absolute;top:12px;right:12px;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px; }
+    .addr-name { font-size:14px;font-weight:700;margin-bottom:6px; }
+    .addr-text { font-size:13px;color:#777;line-height:1.65; }
+    .addr-actions { display:flex;gap:8px;margin-top:12px; }
+
+    /* Notification items */
+    .notif-item { display:flex;align-items:flex-start;gap:14px;padding:16px 0;border-bottom:1px solid #f5f5f5; }
+    .notif-item:last-child { border-bottom:none; }
+    .notif-icon { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+    .notif-body { flex:1; }
+    .notif-title { font-size:13.5px;font-weight:700;margin-bottom:4px; }
+    .notif-msg { font-size:13px;color:#888;line-height:1.5; }
+    .notif-time { font-size:11px;color:#bbb;margin-top:4px; }
+    .notif-unread { width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:6px; }
+
+    /* Toggle */
+    .tog-row { display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #f8f8f8; }
+    .tog-row:last-child { border-bottom:none; }
+    .tog-lbl { font-size:14px;font-weight:600; }
+    .tog-sub { font-size:12px;color:#aaa;margin-top:2px; }
+    .tog { position:relative;width:44px;height:24px;flex-shrink:0; }
+    .tog input { opacity:0;width:0;height:0; }
+    .tslider { position:absolute;inset:0;background:#ddd;border-radius:12px;cursor:pointer;transition:.2s; }
+    .tslider::before { content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s; }
+    .tog input:checked + .tslider { background:var(--red); }
+    .tog input:checked + .tslider::before { transform:translateX(20px); }
+
+    /* Btn helpers */
+    .btn-acc {
+      padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;
+      font-family:'Poppins',sans-serif;cursor:pointer;transition:.15s;
+      display:inline-flex;align-items:center;gap:7px;border:none;
+    }
+    .btn-acc-red   { background:var(--red);color:#fff; } .btn-acc-red:hover   { background:#b5161e; }
+    .btn-acc-black { background:#1a1a1a;color:#fff; }    .btn-acc-black:hover { background:#333; }
+    .btn-acc-out   { background:#fff;color:#888;border:1.5px solid #e8e8e8; } .btn-acc-out:hover   { border-color:var(--red);color:var(--red); }
+    .btn-acc-danger{ background:#fee2e2;color:#dc2626;border:1px solid #fca5a5; } .btn-acc-danger:hover{ background:#dc2626;color:#fff; }
+
+    /* Loading overlay for auth */
+    .loading-overlay {
+      position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;
+      display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+    }
+    .loading-overlay.show { display:flex; }
+    .loading-spinner { width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite; }
+    .loading-text { color:#fff;font-size:14px;font-weight:600; }
+
+    /* Section loading skeleton */
+    .skel-line { height:16px;border-radius:6px;background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200%;animation:shimmer 1.4s infinite;margin-bottom:10px; }
+    @keyframes shimmer { 0%{background-position:200%}100%{background-position:-200%} }
+
+    /* Password strength */
+    .pw-strength { height:4px;border-radius:2px;margin-top:6px;transition:width .3s,background .3s; }
+    .pw-strength.weak   { width:33%;background:#dc2626; }
+    .pw-strength.medium { width:66%;background:#e87722; }
+    .pw-strength.strong { width:100%;background:#27ae60; }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Signing in…</div>
+</div>
+
+<div id="header-mount"></div>
+
+<!-- ════════════════════════════════════════════════════════════
+     AUTH SCREENS
+════════════════════════════════════════════════════════════ -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+
+    <div class="auth-logo-bar">
+      <div class="logo-mark">Camera<span>LK</span></div>
+      <p>Sri Lanka's #1 Camera Store</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="atab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="atab" onclick="switchAuthTab('register')">Create Account</button>
+    </div>
+
+    <!-- ── LOGIN ── -->
+    <div class="auth-panel active" id="panel-login">
+      <div class="af">
+        <label>Email Address</label>
+        <div class="input-wrap"><i class="fas fa-envelope"></i><input type="email" id="li-email" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="hint" id="li-email-hint"></div>
+      </div>
+      <div class="af">
+        <label>Password</label>
+        <div class="input-wrap" style="position:relative">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px">
+          <button onclick="togglePw('li-pass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#bbb;cursor:pointer;font-size:14px"><i class="fas fa-eye"></i></button>
+        </div>
+        <div class="hint" id="li-pass-hint"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin:-6px 0 14px">
+        <a href="#" onclick="showResetPanel()" style="font-size:12px;color:var(--red);font-weight:600">Forgot password?</a>
+      </div>
+      <button class="auth-btn auth-btn-red" onclick="doLogin()" id="li-btn">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+      <div class="auth-err-global" id="li-err"><i class="fas fa-exclamation-circle"></i><span id="li-err-msg"></span></div>
+      <div class="auth-divider"><span>or continue with</span></div>
+      <button class="google-btn" onclick="doGoogleLogin()">
+        <svg class="google-icon" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-link">Don't have an account? <a onclick="switchAuthTab('register')">Create one free</a></div>
+    </div>
+
+    <!-- ── REGISTER ── -->
+    <div class="auth-panel" id="panel-register">
+      <div class="fg2" style="gap:12px;margin-bottom:0">
+        <div class="af">
+          <label>First Name</label>
+          <div class="input-wrap"><i class="fas fa-user"></i><input type="text" id="reg-fname" placeholder="Ashan" autocomplete="given-name"></div>
+        </div>
+        <div class="af">
+          <label>Last Name</label>
+          <div class="input-wrap"><i class="fas fa-user"></i><input type="text" id="reg-lname" placeholder="Perera" autocomplete="family-name"></div>
+        </div>
+      </div>
+      <div class="af">
+        <label>Email Address</label>
+        <div class="input-wrap"><i class="fas fa-envelope"></i><input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email"></div>
+        <div class="hint" id="reg-email-hint"></div>
+      </div>
+      <div class="af">
+        <label>Phone Number</label>
+        <div class="input-wrap"><i class="fas fa-phone"></i><input type="tel" id="reg-phone" placeholder="0771234567" autocomplete="tel"></div>
+      </div>
+      <div class="af">
+        <label>Password</label>
+        <div class="input-wrap" style="position:relative">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="reg-pass" placeholder="Min. 6 characters" oninput="checkPwStrength(this.value)" style="padding-right:42px">
+          <button onclick="togglePw('reg-pass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#bbb;cursor:pointer;font-size:14px"><i class="fas fa-eye"></i></button>
+        </div>
+        <div class="pw-strength" id="pw-bar" style="width:0;background:#e0e0e0"></div>
+        <div class="hint" id="reg-pass-hint"></div>
+      </div>
+      <button class="auth-btn auth-btn-red" onclick="doRegister()" id="reg-btn">
+        <i class="fas fa-user-plus"></i> Create Account
+      </button>
+      <div class="auth-err-global" id="reg-err"><i class="fas fa-exclamation-circle"></i><span id="reg-err-msg"></span></div>
+      <div class="auth-divider"><span>or</span></div>
+      <button class="google-btn" onclick="doGoogleLogin()">
+        <svg class="google-icon" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-link">Already have an account? <a onclick="switchAuthTab('login')">Sign in</a></div>
+    </div>
+
+    <!-- ── FORGOT PASSWORD ── -->
+    <div id="reset-panel">
+      <div style="padding:28px 32px 32px">
+        <button onclick="hideResetPanel()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:20px"><i class="fas fa-arrow-left"></i> Back to Sign In</button>
+        <div style="font-size:18px;font-weight:800;margin-bottom:6px">Reset Password</div>
+        <div style="font-size:13px;color:#aaa;margin-bottom:20px">Enter your email and we'll send a reset link.</div>
+        <div class="af">
+          <label>Email Address</label>
+          <div class="input-wrap"><i class="fas fa-envelope"></i><input type="email" id="reset-email" placeholder="you@example.com"></div>
+        </div>
+        <button class="auth-btn auth-btn-red" onclick="doResetPassword()"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+        <div class="auth-err-global" id="reset-msg" style="margin-top:12px"><i class="fas fa-info-circle"></i><span id="reset-msg-txt"></span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     ACCOUNT APP
+════════════════════════════════════════════════════════════ -->
+<div id="acc-app">
+  <div class="acc-page-bg">
+    <div class="container">
+
+      <nav style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;margin-bottom:22px">
+        <a href="index.html" style="color:#aaa">Home</a><span>›</span>
+        <span style="color:#333">My Account</span>
+      </nav>
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="sb-item"><div class="sb-ico">📦</div><div class="sb-val" id="stat-orders">–</div><div class="sb-lbl">Orders</div></div>
+        <div class="sb-item"><div class="sb-ico">❤️</div><div class="sb-val" id="stat-wish">–</div><div class="sb-lbl">Wishlist</div></div>
+        <div class="sb-item"><div class="sb-ico">⭐</div><div class="sb-val" id="stat-pts">250</div><div class="sb-lbl">Points</div></div>
+        <div class="sb-item"><div class="sb-ico">🏆</div><div class="sb-val">Silver</div><div class="sb-lbl">Tier</div></div>
+      </div>
+
+      <div class="acc-layout">
+
+        <!-- SIDEBAR -->
+        <aside class="acc-sidebar">
+          <div class="acc-profile-hero">
+            <div class="acc-avatar-wrap">
+              <div class="acc-avatar-img" id="sa-avatar"><span id="sa-letter">A</span></div>
+              <div class="acc-avatar-edit" title="Change photo">
+                <input type="file" accept="image/*" onchange="handleAvatarFile(this)">
+                <i class="fas fa-camera"></i>
+              </div>
+            </div>
+            <div class="sidebar-name"  id="sa-name">Loading…</div>
+            <div class="sidebar-email" id="sa-email">…</div>
+            <div class="member-badge"><i class="fas fa-star" style="font-size:9px"></i> Silver Member</div>
+            <div class="fb-badge" id="sa-provider-badge" style="display:none"><i class="fab fa-google" style="font-size:9px"></i> Google Account</div>
+          </div>
+          <nav class="acc-nav">
+            <div class="acc-ni active" onclick="showPanel('dashboard')"><i class="fas fa-th-large"></i> Dashboard</div>
+            <div class="acc-ni"  onclick="showPanel('orders')"><i class="fas fa-box"></i> My Orders <span class="ni-badge" id="orders-badge">0</span></div>
+            <div class="acc-ni"  onclick="showPanel('wishlist')"><i class="fas fa-heart"></i> Wishlist <span class="ni-badge" id="wish-badge">0</span></div>
+            <div class="acc-ni"  onclick="showPanel('profile')"><i class="fas fa-user-edit"></i> Edit Profile</div>
+            <div class="acc-ni"  onclick="showPanel('addresses')"><i class="fas fa-map-marker-alt"></i> Addresses</div>
+            <div class="acc-divider"></div>
+            <div class="acc-ni"  onclick="showPanel('notifications')"><i class="fas fa-bell"></i> Notifications</div>
+            <div class="acc-ni"  onclick="showPanel('settings')"><i class="fas fa-cog"></i> Settings</div>
+            <div class="acc-divider"></div>
+            <div class="acc-ni"  onclick="doSignOut()" style="color:#dc2626"><i class="fas fa-sign-out-alt"></i> Sign Out</div>
+          </nav>
+        </aside>
+
+        <!-- MAIN PANELS -->
+        <div class="acc-main">
+
+          <!-- ── DASHBOARD ── -->
+          <div class="acc-panel active" id="panel-dashboard">
+            <div class="ac">
+              <div class="ac-hdr">
+                <h3><i class="fas fa-th-large"></i> Welcome, <span id="welcome-name">User</span>!</h3>
+                <span style="font-size:12px;color:#bbb" id="last-seen"></span>
+              </div>
+              <div class="ac-body">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+                  <div onclick="showPanel('orders')" style="padding:18px;background:#fff5f5;border:1px solid #fde8e8;border-radius:10px;text-align:center;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='var(--red)'" onmouseout="this.style.borderColor='#fde8e8'">
+                    <i class="fas fa-box" style="font-size:22px;color:var(--red);display:block;margin-bottom:8px"></i>
+                    <div style="font-size:20px;font-weight:800" id="db-orders">–</div>
+                    <div style="font-size:12px;color:#888">Total Orders</div>
+                  </div>
+                  <div onclick="showPanel('wishlist')" style="padding:18px;background:#fff0f5;border:1px solid #fdd;border-radius:10px;text-align:center;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='#f472b6'" onmouseout="this.style.borderColor='#fdd'">
+                    <i class="fas fa-heart" style="font-size:22px;color:#e91e8c;display:block;margin-bottom:8px"></i>
+                    <div style="font-size:20px;font-weight:800" id="db-wish">–</div>
+                    <div style="font-size:12px;color:#888">Wishlist</div>
+                  </div>
+                  <div style="padding:18px;background:#f0fff4;border:1px solid #b7ebc8;border-radius:10px;text-align:center">
+                    <i class="fas fa-coins" style="font-size:22px;color:#27ae60;display:block;margin-bottom:8px"></i>
+                    <div style="font-size:20px;font-weight:800">250</div>
+                    <div style="font-size:12px;color:#888">Reward Points</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-clock"></i> Recent Orders</h3><button onclick="showPanel('orders')" style="font-size:12px;color:var(--red);font-weight:700;border:none;background:none;cursor:pointer">View All →</button></div>
+              <div class="ac-body" style="padding:0"><div style="overflow-x:auto"><table class="order-tbl"><thead><tr><th>Order</th><th>Items</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody id="dash-orders-tbody"><tr><td colspan="5" style="text-align:center;padding:28px;color:#bbb"><div class="skel-line" style="width:60%;margin:0 auto 8px"></div><div class="skel-line" style="width:40%;margin:0 auto"></div></td></tr></tbody></table></div></div>
+            </div>
+          </div>
+
+          <!-- ── ORDERS ── -->
+          <div class="acc-panel" id="panel-orders">
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-box"></i> My Orders</h3></div>
+              <div class="ac-body" style="padding:0"><div style="overflow-x:auto"><table class="order-tbl"><thead><tr><th>Order ID</th><th>Product(s)</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody id="orders-tbody"></tbody></table></div></div>
+            </div>
+          </div>
+
+          <!-- ── WISHLIST ── -->
+          <div class="acc-panel" id="panel-wishlist">
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-heart"></i> Wishlist (<span id="wish-count">0</span>)</h3>
+                <button onclick="clearWishlist()" class="btn-acc btn-acc-out" style="font-size:12px;padding:7px 14px">Clear All</button>
+              </div>
+              <div class="ac-body"><div class="wl-grid" id="wl-grid"></div></div>
+            </div>
+          </div>
+
+          <!-- ── PROFILE ── -->
+          <div class="acc-panel" id="panel-profile">
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-user-edit"></i> Personal Information</h3></div>
+              <div class="ac-body">
+                <div style="display:flex;align-items:center;gap:18px;margin-bottom:24px;flex-wrap:wrap">
+                  <div class="acc-avatar-img" id="pf-avatar" style="width:80px;height:80px;font-size:28px;flex-shrink:0"><span id="pf-avatar-letter">A</span></div>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;margin-bottom:4px">Profile Photo</div>
+                    <div style="font-size:12px;color:#aaa;margin-bottom:10px">Stored as Base64 — JPG or PNG recommended</div>
+                    <label style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13px;font-weight:700;color:#555;cursor:pointer;transition:.15s;font-family:'Poppins',sans-serif" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='#e0e0e0';this.style.color='#555'">
+                      <i class="fas fa-upload"></i> Upload Photo
+                      <input type="file" accept="image/*" style="display:none" onchange="handleAvatarFile(this)">
+                    </label>
+                  </div>
+                </div>
+                <div class="fg2" style="gap:16px">
+                  <div class="fgrp"><label>First Name</label><input type="text" class="fctl" id="pf-fname" placeholder="Ashan"></div>
+                  <div class="fgrp"><label>Last Name</label><input type="text" class="fctl" id="pf-lname" placeholder="Perera"></div>
+                  <div class="fgrp"><label>Email</label><input type="email" class="fctl" id="pf-email" disabled style="background:#f8f8f8;color:#aaa" title="Email cannot be changed here"></div>
+                  <div class="fgrp"><label>Phone</label><input type="tel" class="fctl" id="pf-phone" placeholder="0771234567"></div>
+                  <div class="fgrp"><label>Date of Birth</label><input type="date" class="fctl" id="pf-dob"></div>
+                  <div class="fgrp"><label>Gender</label><select class="fctl" id="pf-gender"><option value="">Prefer not to say</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+                  <div class="fgrp fgf"><label>Bio</label><textarea class="fctl" id="pf-bio" rows="3" placeholder="Tell us about yourself…"></textarea></div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+                  <button onclick="saveProfile()" class="btn-acc btn-acc-red"><i class="fas fa-save"></i> Save Changes</button>
+                  <button onclick="loadProfileUI()" class="btn-acc btn-acc-out">Cancel</button>
+                </div>
+              </div>
+            </div>
+            <!-- Change password (only for email users) -->
+            <div class="ac" id="pw-change-card">
+              <div class="ac-hdr"><h3><i class="fas fa-lock"></i> Change Password</h3></div>
+              <div class="ac-body">
+                <div style="max-width:420px;display:flex;flex-direction:column;gap:14px">
+                  <div class="fgrp"><label>Current Password</label><input type="password" class="fctl" id="pw-cur" placeholder="••••••••"></div>
+                  <div class="fgrp"><label>New Password</label><input type="password" class="fctl" id="pw-new" placeholder="Min. 6 characters"></div>
+                  <div class="fgrp"><label>Confirm Password</label><input type="password" class="fctl" id="pw-conf" placeholder="Repeat new password"></div>
+                  <button onclick="changePassword()" class="btn-acc btn-acc-red" style="width:fit-content"><i class="fas fa-key"></i> Update Password</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ADDRESSES ── -->
+          <div class="acc-panel" id="panel-addresses">
+            <div class="ac">
+              <div class="ac-hdr">
+                <h3><i class="fas fa-map-marker-alt"></i> Saved Addresses</h3>
+                <button onclick="showAddressForm()" class="btn-acc btn-acc-red" style="padding:8px 16px;font-size:13px"><i class="fas fa-plus"></i> Add Address</button>
+              </div>
+              <div class="ac-body">
+                <div class="addr-grid" id="addr-grid">
+                  <div style="grid-column:1/-1;text-align:center;padding:36px;color:#bbb">
+                    <i class="fas fa-map-marker-alt" style="font-size:36px;display:block;margin-bottom:12px;color:#f0f0f0"></i>
+                    <p>No addresses saved. Add one below.</p>
+                  </div>
+                </div>
+                <!-- Address form -->
+                <div id="addr-form" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid #f0f0f0">
+                  <div style="font-size:15px;font-weight:800;margin-bottom:16px">Add New Address</div>
+                  <div class="fg2" style="gap:14px;margin-bottom:14px">
+                    <div class="fgrp fgf"><label>Full Name</label><input type="text" class="fctl" id="addr-name" placeholder="Ashan Perera"></div>
+                    <div class="fgrp fgf"><label>Street Address</label><input type="text" class="fctl" id="addr-street" placeholder="No. 12, Galle Road"></div>
+                    <div class="fgrp"><label>City</label><input type="text" class="fctl" id="addr-city" placeholder="Colombo"></div>
+                    <div class="fgrp"><label>District</label>
+                      <select class="fctl" id="addr-district">
+                        <option>Colombo</option><option>Gampaha</option><option>Kalutara</option><option>Kandy</option><option>Galle</option><option>Jaffna</option><option>Batticaloa</option><option>Trincomalee</option><option>Kurunegala</option><option>Other</option>
+                      </select>
+                    </div>
+                    <div class="fgrp"><label>Postal Code</label><input type="text" class="fctl" id="addr-postal" placeholder="00300"></div>
+                    <div class="fgrp"><label>Phone</label><input type="tel" class="fctl" id="addr-phone" placeholder="0771234567"></div>
+                  </div>
+                  <div style="display:flex;gap:10px">
+                    <button onclick="saveAddress()" class="btn-acc btn-acc-red"><i class="fas fa-save"></i> Save Address</button>
+                    <button onclick="document.getElementById('addr-form').style.display='none'" class="btn-acc btn-acc-out">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── NOTIFICATIONS ── -->
+          <div class="acc-panel" id="panel-notifications">
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-bell"></i> Notifications</h3><button style="font-size:12px;color:var(--red);font-weight:700;border:none;background:none;cursor:pointer">Mark all read</button></div>
+              <div class="ac-body">
+                <div class="notif-item">
+                  <div class="notif-icon" style="background:#fff5f5"><i class="fas fa-box" style="color:var(--red)"></i></div>
+                  <div class="notif-body"><div class="notif-title">Your order has been shipped</div><div class="notif-msg">Your recent order is on its way. Expected delivery in 2–3 business days.</div><div class="notif-time">2 hours ago</div></div>
+                  <div class="notif-unread"></div>
+                </div>
+                <div class="notif-item">
+                  <div class="notif-icon" style="background:#f0fff4"><i class="fas fa-tag" style="color:#27ae60"></i></div>
+                  <div class="notif-body"><div class="notif-title">Flash Sale — 20% off Sony lenses!</div><div class="notif-msg">Use code SONY20 at checkout. Valid until midnight.</div><div class="notif-time">5 hours ago</div></div>
+                  <div class="notif-unread"></div>
+                </div>
+                <div class="notif-item">
+                  <div class="notif-icon" style="background:#fff8f0"><i class="fas fa-star" style="color:#e87722"></i></div>
+                  <div class="notif-body"><div class="notif-title">Review your recent purchase</div><div class="notif-msg">Share your experience and earn 50 reward points.</div><div class="notif-time">2 days ago</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SETTINGS ── -->
+          <div class="acc-panel" id="panel-settings">
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-bell"></i> Notification Preferences</h3></div>
+              <div class="ac-body">
+                <div class="tog-row"><div><div class="tog-lbl">Order Updates</div><div class="tog-sub">Shipping and delivery notifications</div></div><label class="tog"><input type="checkbox" checked><span class="tslider"></span></label></div>
+                <div class="tog-row"><div><div class="tog-lbl">Promotions & Deals</div><div class="tog-sub">Flash sales and special offers</div></div><label class="tog"><input type="checkbox" checked><span class="tslider"></span></label></div>
+                <div class="tog-row"><div><div class="tog-lbl">New Arrivals</div><div class="tog-sub">Be first to know about new products</div></div><label class="tog"><input type="checkbox"><span class="tslider"></span></label></div>
+                <div class="tog-row"><div><div class="tog-lbl">Wishlist Price Drops</div><div class="tog-sub">When wishlist items go on sale</div></div><label class="tog"><input type="checkbox" checked><span class="tslider"></span></label></div>
+              </div>
+            </div>
+            <div class="ac">
+              <div class="ac-hdr"><h3><i class="fas fa-shield-alt"></i> Security</h3></div>
+              <div class="ac-body">
+                <div class="tog-row"><div><div class="tog-lbl">Login Activity Alerts</div><div class="tog-sub">Email on new sign-ins</div></div><label class="tog"><input type="checkbox" checked><span class="tslider"></span></label></div>
+                <div style="margin-top:18px;padding-top:18px;border-top:1px solid #f5f5f5">
+                  <button onclick="confirmDeleteAccount()" class="btn-acc btn-acc-danger"><i class="fas fa-trash"></i> Delete Account</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /acc-main -->
+      </div><!-- /acc-layout -->
+    </div>
+  </div>
+</div>
+
+<div id="footer-mount"></div>
+<div id="toast"><span class="toast-icon">✓</span><span class="toast-msg"></span></div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/store.js"></script>
+<script src="js/components.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   Account Page JavaScript
+════════════════════════════════════════════════════════════ */
+let currentUser   = null;
+let userProfile   = null;
+let userOrders    = [];
+let userWishlist  = [];
+
+/* ── Helpers ── */
+function showLoading(msg='Please wait…') {
+  document.getElementById('loading-overlay').classList.add('show');
+  document.getElementById('loading-text').textContent = msg;
+}
+function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.querySelector('span').textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+function clearErr(id) { document.getElementById(id)?.classList.remove('show'); }
+
+function togglePw(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.innerHTML = '<i class="fas fa-eye-slash"></i>'; }
+  else { inp.type = 'password'; btn.innerHTML = '<i class="fas fa-eye"></i>'; }
+}
+
+function checkPwStrength(val) {
+  const bar  = document.getElementById('pw-bar');
+  const hint = document.getElementById('reg-pass-hint');
+  if (!val) { bar.style.width='0'; return; }
+  let score = 0;
+  if (val.length >= 6)  score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+  const labels = ['','weak','medium','strong'];
+  const texts  = ['','Weak — add numbers & uppercase','Medium — almost there!','Strong password ✓'];
+  const colors = ['','#dc2626','#e87722','#27ae60'];
+  bar.className = 'pw-strength ' + (labels[score]||'weak');
+  hint.textContent = texts[score] || '';
+  hint.style.color = colors[score] || '#aaa';
+}
+
+/* ── Auth Tab Switch ── */
+function switchAuthTab(tab) {
+  document.querySelectorAll('.atab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('panel-login').classList.toggle('active', tab==='login');
+  document.getElementById('panel-register').classList.toggle('active', tab==='register');
+  document.getElementById('reset-panel').style.display='none';
+  clearErr('li-err'); clearErr('reg-err');
+}
+
+function showResetPanel() {
+  document.getElementById('panel-login').style.display='none';
+  document.getElementById('reset-panel').style.display='block';
+  document.querySelector('.auth-tabs').style.display='none';
+}
+function hideResetPanel() {
+  document.getElementById('panel-login').style.display='block';
+  document.getElementById('reset-panel').style.display='none';
+  document.querySelector('.auth-tabs').style.display='flex';
+}
+
+/* ── Sign-In ── */
+async function doLogin() {
+  clearErr('li-err');
+  const email = document.getElementById('li-email').value.trim();
+  const pass  = document.getElementById('li-pass').value;
+  if (!email || !pass) { showErr('li-err','Please enter your email and password.'); return; }
+
+  const btn = document.getElementById('li-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="auth-spinner"></div> Signing in…';
+  showLoading('Signing in…');
+
+  try {
+    const user = await AuthService.login(email, pass);
+    await onLoginSuccess(user);
+  } catch(e) {
+    showErr('li-err', friendlyError(e));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+    hideLoading();
+  }
+}
+
+/* ── Register ── */
+async function doRegister() {
+  clearErr('reg-err');
+  const fn    = document.getElementById('reg-fname').value.trim();
+  const ln    = document.getElementById('reg-lname').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const pass  = document.getElementById('reg-pass').value;
+
+  if (!fn||!email||!pass) { showErr('reg-err','Please fill First Name, Email and Password.'); return; }
+  if (pass.length < 6)   { showErr('reg-err','Password must be at least 6 characters.'); return; }
+  if (!/\S+@\S+\.\S+/.test(email)) { showErr('reg-err','Please enter a valid email address.'); return; }
+
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="auth-spinner"></div> Creating account…';
+  showLoading('Creating your account…');
+
+  try {
+    const displayName = (fn + ' ' + ln).trim();
+    const user = await AuthService.register(email, pass, displayName);
+    // Save extra fields
+    const uid = user.uid || user.email;
+    await AuthService.saveProfile(uid, { phone, displayName, email });
+    await onLoginSuccess(user);
+  } catch(e) {
+    showErr('reg-err', friendlyError(e));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+    hideLoading();
+  }
+}
+
+/* ── Google Login ── */
+async function doGoogleLogin() {
+  showLoading('Opening Google sign-in…');
+  try {
+    const user = await AuthService.loginWithGoogle();
+    await onLoginSuccess(user);
+  } catch(e) {
+    hideLoading();
+    showToast('Google sign-in: ' + friendlyError(e));
+  }
+}
+
+/* ── Reset Password ── */
+async function doResetPassword() {
+  const email = document.getElementById('reset-email').value.trim();
+  if (!email) { showErr('reset-msg','Enter your email address.'); return; }
+  try {
+    await AuthService.resetPassword(email);
+    const el = document.getElementById('reset-msg');
+    el.querySelector('span').textContent = 'Reset link sent! Check your inbox.';
+    el.querySelector('i').className = 'fas fa-check-circle';
+    el.style.background = '#f0fff4'; el.style.borderColor = '#b7ebc8';
+    el.querySelector('span').style.color = '#27ae60';
+    el.classList.add('show');
+  } catch(e) {
+    showErr('reset-msg', friendlyError(e));
+  }
+}
+
+/* ── Login Success ── */
+async function onLoginSuccess(user) {
+  currentUser = user;
+  hideLoading();
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('acc-app').style.display      = 'block';
+  await loadUserData();
+}
+
+/* ── Load all user data ── */
+async function loadUserData() {
+  if (!currentUser) return;
+  const uid = currentUser.uid || currentUser.email;
+  showLoading('Loading your account…');
+  try {
+    // Profile
+    const profileData = await AuthService.getProfile(uid);
+    userProfile = profileData || {};
+
+    // Merge Firebase user data
+    if (currentUser.displayName)  userProfile.displayName = currentUser.displayName;
+    if (currentUser.email)        userProfile.email = currentUser.email;
+    if (currentUser.photoURL)     userProfile.photoURL = currentUser.photoURL;
+
+    // Orders & Wishlist
+    userOrders   = await AuthService.getOrders(uid);
+    userWishlist = await AuthService.getWishlist(uid);
+    if (!Array.isArray(userWishlist)) userWishlist = [];
+
+    populateSidebar();
+    loadProfileUI();
+    loadOrdersUI();
+    loadWishlistUI();
+    loadAddressesUI();
+  } catch(e) {
+    console.error('loadUserData error', e);
+    showToast('Error loading account data');
+  } finally {
+    hideLoading();
+  }
+}
+
+/* ── Sidebar ── */
+function populateSidebar() {
+  const name   = userProfile.displayName || userProfile.email || 'User';
+  const letter = name[0].toUpperCase();
+  const email  = userProfile.email || currentUser.email || '';
+  const photo  = userProfile.photoURL || userProfile.avatar || '';
+  const isGoogle = AuthService.isFirebase() && currentUser.providerData?.[0]?.providerId === 'google.com';
+
+  // Name & email
+  document.getElementById('sa-name').textContent  = name;
+  document.getElementById('sa-email').textContent = email;
+  document.getElementById('welcome-name').textContent = name.split(' ')[0];
+  document.getElementById('sa-letter').textContent = letter;
+
+  // Avatar
+  const saAvatar = document.getElementById('sa-avatar');
+  if (photo) {
+    saAvatar.innerHTML = `<img src="${photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover" onerror="this.parentElement.innerHTML='<span>${letter}</span>'">`;
+  } else {
+    saAvatar.innerHTML = `<span>${letter}</span>`;
+  }
+
+  // Provider badge
+  const badge = document.getElementById('sa-provider-badge');
+  if (isGoogle) badge.style.display = 'inline-flex';
+
+  // Stats
+  document.getElementById('stat-orders').textContent = userOrders.length;
+  document.getElementById('stat-wish').textContent   = userWishlist.length;
+  document.getElementById('db-orders').textContent   = userOrders.length;
+  document.getElementById('db-wish').textContent     = userWishlist.length;
+  document.getElementById('orders-badge').textContent = userOrders.length;
+  document.getElementById('wish-badge').textContent   = userWishlist.length;
+  document.getElementById('wish-count').textContent   = userWishlist.length;
+
+  // Hide password change for Google users
+  const pwCard = document.getElementById('pw-change-card');
+  if (pwCard) pwCard.style.display = isGoogle ? 'none' : 'block';
+
+  // Last seen
+  document.getElementById('last-seen').textContent = 'Last login: ' + new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+
+  // Dashboard recent orders
+  const tbody = document.getElementById('dash-orders-tbody');
+  if (userOrders.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:#bbb">No orders yet. <a href="category.html" style="color:var(--red);font-weight:700">Start shopping →</a></td></tr>';
+  } else {
+    tbody.innerHTML = userOrders.slice(0,3).map(o => `
+      <tr>
+        <td><strong>${o.id||'—'}</strong></td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.summary||'Order'}</td>
+        <td>${o.date||'—'}</td>
+        <td><strong>Rs. ${(o.total||0).toLocaleString()}</strong></td>
+        <td><span class="os os-${(o.status||'pending').toLowerCase().replace(/ /g,'-')}">${o.status||'Pending'}</span></td>
+      </tr>`).join('');
+  }
+}
+
+/* ── Profile UI ── */
+function loadProfileUI() {
+  const p = userProfile;
+  document.getElementById('pf-fname').value  = (p.displayName||'').split(' ')[0] || '';
+  document.getElementById('pf-lname').value  = (p.displayName||'').split(' ').slice(1).join(' ') || '';
+  document.getElementById('pf-email').value  = p.email || currentUser?.email || '';
+  document.getElementById('pf-phone').value  = p.phone || '';
+  document.getElementById('pf-dob').value    = p.dob   || '';
+  document.getElementById('pf-gender').value = p.gender|| '';
+  document.getElementById('pf-bio').value    = p.bio   || '';
+
+  const photo  = p.photoURL || p.avatar || '';
+  const letter = (p.displayName||p.email||'U')[0].toUpperCase();
+  const pfAv   = document.getElementById('pf-avatar');
+  document.getElementById('pf-avatar-letter').textContent = letter;
+  if (photo) pfAv.innerHTML = `<img src="${photo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover">`;
+}
+
+async function saveProfile() {
+  if (!currentUser) return;
+  const fn   = document.getElementById('pf-fname').value.trim();
+  const ln   = document.getElementById('pf-lname').value.trim();
+  const name = (fn + ' ' + ln).trim() || fn;
+  const data = {
+    displayName: name,
+    phone:  document.getElementById('pf-phone').value.trim(),
+    dob:    document.getElementById('pf-dob').value,
+    gender: document.getElementById('pf-gender').value,
+    bio:    document.getElementById('pf-bio').value.trim()
+  };
+  showLoading('Saving profile…');
+  try {
+    const uid = currentUser.uid || currentUser.email;
+    await AuthService.saveProfile(uid, data);
+    Object.assign(userProfile, data);
+    // Update Firebase display name
+    if (AuthService.isFirebase() && currentUser.updateProfile) {
+      await currentUser.updateProfile({ displayName: name });
+    }
+    populateSidebar();
+    showToast('✓ Profile updated!');
+  } catch(e) { showToast('Error: ' + e.message); }
+  finally { hideLoading(); }
+}
+
+async function changePassword() {
+  const cur  = document.getElementById('pw-cur').value;
+  const nw   = document.getElementById('pw-new').value;
+  const conf = document.getElementById('pw-conf').value;
+  if (!nw || nw.length < 6) { showToast('New password must be at least 6 characters'); return; }
+  if (nw !== conf) { showToast('Passwords do not match'); return; }
+  showLoading('Updating password…');
+  try {
+    if (AuthService.isFirebase()) {
+      // Re-authenticate first
+      const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, cur);
+      await currentUser.reauthenticateWithCredential(cred);
+      await currentUser.updatePassword(nw);
+    } else {
+      // LocalAuth: verify current pass
+      const uid   = currentUser.uid;
+      const users = JSON.parse(localStorage.getItem('clk_local_users')||'{}');
+      const email = Object.keys(users).find(e => users[e].uid === uid);
+      if (!email || users[email].password !== cur) throw new Error('Current password incorrect');
+      users[email].password = nw;
+      localStorage.setItem('clk_local_users', JSON.stringify(users));
+    }
+    document.getElementById('pw-cur').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-conf').value = '';
+    showToast('✓ Password changed!');
+  } catch(e) { showToast('Error: ' + friendlyError(e)); }
+  finally { hideLoading(); }
+}
+
+/* ── Avatar Upload ── */
+function handleAvatarFile(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 2*1024*1024) { showToast('Image must be smaller than 2MB'); return; }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const base64 = e.target.result;
+    userProfile.avatar = base64;
+    // Update all avatar elements
+    ['sa-avatar','pf-avatar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<img src="${base64}" style="width:${id==='sa-avatar'?'80':'80'}px;height:${id==='sa-avatar'?'80':'80'}px;border-radius:50%;object-fit:cover">`;
+    });
+    if (currentUser) {
+      const uid = currentUser.uid || currentUser.email;
+      await AuthService.saveProfile(uid, { avatar: base64 });
+    }
+    showToast('✓ Photo updated!');
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── Orders UI ── */
+function loadOrdersUI() {
+  const tbody = document.getElementById('orders-tbody');
+  if (!tbody) return;
+  if (!userOrders.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:36px;color:#bbb">No orders yet. <a href="category.html" style="color:var(--red);font-weight:700">Start shopping →</a></td></tr>';
+    return;
+  }
+  tbody.innerHTML = userOrders.map(o => `
+    <tr>
+      <td><strong>${o.id||'—'}</strong><div style="font-size:11px;color:#bbb">${o.itemCount||''}${o.itemCount?'item(s)':''}</div></td>
+      <td style="max-width:200px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600">${o.summary||'Order'}</div></td>
+      <td>${o.date||'—'}</td>
+      <td><strong>Rs. ${(o.total||0).toLocaleString()}</strong></td>
+      <td><span class="os os-${(o.status||'pending').toLowerCase().replace(/ /g,'-')}">${o.status||'Pending'}</span></td>
+      <td><button style="font-size:12px;color:var(--red);font-weight:700;border:none;background:none;cursor:pointer">Details</button></td>
+    </tr>`).join('');
+}
+
+/* ── Wishlist UI ── */
+function loadWishlistUI() {
+  const grid = document.getElementById('wl-grid');
+  if (!grid) return;
+  document.getElementById('wish-count').textContent   = userWishlist.length;
+  document.getElementById('wish-badge').textContent   = userWishlist.length;
+  document.getElementById('stat-wish').textContent    = userWishlist.length;
+  if (!userWishlist.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:#bbb"><i class="fas fa-heart" style="font-size:36px;display:block;margin-bottom:14px;color:#f5f5f5"></i><p>Wishlist is empty.</p><a href="category.html" style="color:var(--red);font-weight:700">Browse Products →</a></div>';
+    return;
+  }
+  grid.innerHTML = userWishlist.map(p => `
+    <div style="position:relative">
+      <div class="product-card" style="cursor:pointer" onclick="window.location.href='product.html?id=${p.id}'">
+        <div class="card-img">
+          <img src="${p.img||'https://placehold.co/200x200/f5f5f5/ccc?text=IMG'}" alt="${p.name}" style="width:80%;height:80%;object-fit:contain" onerror="this.src='https://placehold.co/200x200/f5f5f5/ccc?text=IMG'">
+        </div>
+        <div class="card-body">
+          <div class="card-title">${p.name}</div>
+          <div class="card-price-current">Rs. ${(p.price||0).toLocaleString()}.00</div>
+        </div>
+        <div class="card-footer" style="padding:0 14px 14px">
+          <button class="card-add-btn" onclick="event.stopPropagation();addWishItemToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${p.price},'${p.img||''}')"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+        </div>
+      </div>
+      <button onclick="removeFromWishlist('${p.id}')" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.95);border:1px solid #f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--red);cursor:pointer;z-index:2"><i class="fas fa-times"></i></button>
+    </div>`).join('');
+}
+
+function addWishItemToCart(id,name,price,img) {
+  cart.add({ id, name, price: parseInt(price), img });
+}
+
+async function removeFromWishlist(id) {
+  userWishlist = userWishlist.filter(p => p.id !== id);
+  if (currentUser) {
+    const uid = currentUser.uid || currentUser.email;
+    await AuthService.saveWishlist(uid, userWishlist);
+  }
+  localStorage.setItem('clk_wishlist', JSON.stringify(userWishlist));
+  loadWishlistUI();
+  showToast('Removed from wishlist');
+}
+
+async function clearWishlist() {
+  userWishlist = [];
+  if (currentUser) {
+    const uid = currentUser.uid || currentUser.email;
+    await AuthService.saveWishlist(uid, []);
+  }
+  localStorage.setItem('clk_wishlist', JSON.stringify([]));
+  loadWishlistUI();
+  showToast('Wishlist cleared');
+}
+
+/* ── Addresses UI ── */
+function loadAddressesUI() {
+  const grid = document.getElementById('addr-grid');
+  const addrs = userProfile.addresses || [];
+  if (!addrs.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:36px;color:#bbb"><i class="fas fa-map-marker-alt" style="font-size:36px;display:block;margin-bottom:12px;color:#f5f5f5"></i><p>No addresses saved.</p></div>';
+    return;
+  }
+  grid.innerHTML = addrs.map((a,i) => `
+    <div class="addr-card ${i===0?'default':''}">
+      ${i===0?'<div class="addr-default-badge">Default</div>':''}
+      <div class="addr-name">${a.name}</div>
+      <div class="addr-text">${a.street}<br>${a.city}, ${a.district} ${a.postal}<br>${a.phone}</div>
+      <div class="addr-actions">
+        <button onclick="deleteAddress(${i})" class="btn-acc btn-acc-out" style="font-size:12px;padding:5px 12px">Delete</button>
+        ${i!==0?`<button onclick="setDefaultAddress(${i})" class="btn-acc btn-acc-black" style="font-size:12px;padding:5px 12px">Set Default</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function showAddressForm() { document.getElementById('addr-form').style.display='block'; }
+
+async function saveAddress() {
+  const name    = document.getElementById('addr-name').value.trim();
+  const street  = document.getElementById('addr-street').value.trim();
+  const city    = document.getElementById('addr-city').value.trim();
+  const district= document.getElementById('addr-district').value;
+  const postal  = document.getElementById('addr-postal').value.trim();
+  const phone   = document.getElementById('addr-phone').value.trim();
+  if (!name||!street||!city) { showToast('Please fill Name, Street and City'); return; }
+  const addr = { name, street, city, district, postal, phone };
+  if (!userProfile.addresses) userProfile.addresses = [];
+  userProfile.addresses.push(addr);
+  const uid = currentUser.uid || currentUser.email;
+  await AuthService.saveProfile(uid, { addresses: userProfile.addresses });
+  loadAddressesUI();
+  document.getElementById('addr-form').style.display='none';
+  showToast('✓ Address saved!');
+}
+
+async function deleteAddress(i) {
+  userProfile.addresses.splice(i,1);
+  const uid = currentUser.uid || currentUser.email;
+  await AuthService.saveProfile(uid, { addresses: userProfile.addresses });
+  loadAddressesUI();
+}
+
+async function setDefaultAddress(i) {
+  const addr = userProfile.addresses.splice(i,1)[0];
+  userProfile.addresses.unshift(addr);
+  const uid = currentUser.uid || currentUser.email;
+  await AuthService.saveProfile(uid, { addresses: userProfile.addresses });
+  loadAddressesUI();
+}
+
+/* ── Sign Out ── */
+async function doSignOut() {
+  showLoading('Signing out…');
+  try { await AuthService.logout(); } catch(e){}
+  currentUser = null; userProfile = {}; userOrders = []; userWishlist = [];
+  hideLoading();
+  document.getElementById('acc-app').style.display      = 'none';
+  document.getElementById('auth-overlay').style.display = 'flex';
+  switchAuthTab('login');
+  showToast('Signed out successfully');
+}
+
+/* ── Delete account ── */
+function confirmDeleteAccount() {
+  if (confirm('Delete your account permanently? This cannot be undone.')) {
+    doSignOut();
+    showToast('Account deleted');
+  }
+}
+
+/* ── Panel navigation ── */
+function showPanel(name) {
+  document.querySelectorAll('.acc-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.acc-ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+name)?.classList.add('active');
+  document.querySelector(`.acc-ni[onclick*="'${name}'"]`)?.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ── Firebase error to readable message ── */
+function friendlyError(e) {
+  const msg = e.message || e.toString();
+  if (msg.includes('user-not-found')  || msg.includes('No account')) return 'No account found with this email.';
+  if (msg.includes('wrong-password')  || msg.includes('Incorrect'))  return 'Incorrect password. Please try again.';
+  if (msg.includes('email-already-in-use') || msg.includes('already registered')) return 'This email is already registered.';
+  if (msg.includes('invalid-email'))  return 'Please enter a valid email address.';
+  if (msg.includes('weak-password'))  return 'Password is too weak. Use at least 6 characters.';
+  if (msg.includes('network-request-failed')) return 'Network error. Check your internet connection.';
+  if (msg.includes('popup-closed'))   return 'Sign-in popup was closed. Please try again.';
+  if (msg.includes('requires Firebase')) return 'Google sign-in requires Firebase setup. Use email/password instead.';
+  return msg.replace('Firebase: ','').replace(/\(auth\/.*\)\./,'').trim();
+}
+
+/* ── Boot ── */
+document.addEventListener('DOMContentLoaded', async () => {
+  initFirebase();
+  AuthService.init();
+  await Store.init();
+
+  // Listen for Firebase auth state changes (handles page reload)
+  AuthService.onAuthStateChanged(async user => {
+    if (user) {
+      currentUser = user;
+      await onLoginSuccess(user);
+    }
+    // else stay on auth screen
+  });
+});
+</script>
+</body>
+</html>
